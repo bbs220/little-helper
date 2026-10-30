@@ -1,8 +1,16 @@
 ; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
-; but it can also be edited manually.
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
@@ -15,4 +23,3 @@ config/icon="res://addons/little_helper/icon.svg"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/little_helper/plugin.cfg")
-
