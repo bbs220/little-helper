@@ -1,0 +1,18 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited manually.
+
+config_version=5
+
+[application]
+
+config/name="Little Helper"
+config/description="In-Engine AI Copilot & MCP Bridge for Godot 4"
+config/version="0.1"
+config/features=PackedStringArray("4.3")
+config/icon="res://addons/little_helper/icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/little_helper/plugin.cfg")
+

@@ -1,0 +1,14 @@
+# Godot 4 .gitignore
+.godot/
+*.translation
+
+# OS / Editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+
+# Local testing configs & secrets
+*.cfg
+!addons/little_helper/plugin.cfg
+

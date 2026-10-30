@@ -7,7 +7,7 @@
  * in-editor TCP server without requiring ANY npm packages or node_modules.
  * 
  * Usage:
- *   node addons/little_helper/mcp_bridge.js [port]
+ *   node addons/little_helper/bridge/mcp_bridge.js [port]
  */
 
 const readline = require('node:readline');
