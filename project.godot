@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Little Helper"
 config/description="In-Engine AI Copilot & MCP Bridge for Godot 4"
-config/version="0.1"
+config/version="1.0.0"
 config/features=PackedStringArray("4.3")
 config/icon="res://addons/little_helper/icon.svg"
 

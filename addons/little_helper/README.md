@@ -23,6 +23,14 @@
 
 ---
 
+## 📋 Compatibility & Requirements
+
+- **Engine:** Godot 4.2+ (Tested on Godot 4.3 & 4.4).
+- **In-Engine Chat:** **Zero external dependencies.** Uses Godot's built-in `HTTPRequest`.
+- **MCP Bridge (Optional):** Requires [Node.js](https://nodejs.org/) (v18+ recommended) installed on your system only if you want to connect external agents (Cursor, Claude Desktop, Antigravity) via stdio MCP.
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Installation
@@ -137,6 +145,7 @@ addons/little_helper/
 ├── plugin.cfg                  # Plugin metadata & editor registration
 ├── little_helper.gd            # Plugin lifecycle entry script
 ├── icon.svg                    # Mascot avatar & editor icon
+├── LICENSE.txt                 # MIT License
 ├── README.md                   # Plugin documentation
 ├── bridge/
 │   └── mcp_bridge.js           # Lightweight Node.js stdio MCP bridge
