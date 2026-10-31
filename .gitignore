@@ -12,3 +12,7 @@ desktop.ini
 *.cfg
 !addons/little_helper/plugin.cfg
 
+# Release Archives
+*.zip
+*.tar.gz
+
