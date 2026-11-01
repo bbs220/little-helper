@@ -1,0 +1,39 @@
+name: Package & Release Addon ZIP
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build POSIX-compliant ZIP
+        run: |
+          zip -r little_helper.zip addons/
+          echo "Package contents preview:"
+          unzip -l little_helper.zip | head -n 20
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: little_helper-zip
+          path: little_helper.zip
+          retention-days: 30
+
+      - name: Upload ZIP to GitHub Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: little_helper.zip
+
