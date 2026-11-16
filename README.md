@@ -15,9 +15,14 @@
 
 ## ✨ Features
 
-- **🎮 20 Native Engine Tools:** Live scene inspection, node creation/removal, scene instantiation, reparenting, property editing, script attachment, signal wiring, project settings, GDScript evaluation, scene management, project execution, and debug log tailing.
-- **↩️ Full Undo / Redo:** Scene modifications (`add_node`, `remove_node`, `instantiate_scene`, `reparent_node`, `set_node_property`, `attach_script`, `connect_signal`) integrate with Godot's `EditorUndoRedoManager` (`Ctrl+Z` / `Ctrl+Y`).
-- **⚡ Slash Commands:** Quick editor shortcuts with autocompletion (`/selected`, `/select`, `/tree`, `/inspect`, `/tools`, `/save`, `/open`, `/remove`, `/run`, `/stop`, `/logs`, `/setting`, `/eval`, `/clear`).
+- **🎮 24 Native Engine Tools:** Live scene inspection, node creation/removal, scene instantiation, reparenting, property editing, resource creation, script writing/patching, signal wiring, project settings, ClassDB reflection, GDScript evaluation, scene management, project execution, and debug log tailing.
+- **📄 Direct Script Writing & Patching:** Write full `.gd` scripts to disk or patch targeted functions with one-click **[Apply to Active Script]** directly from chat code blocks.
+- **🎯 Smart Context Pills:** Clickable toggles (`[📄 Script]`, `[🎯 Node]`, `[🌳 Scene]`) to automatically include your active GDScript, selected node properties, or scene tree in AI prompts.
+- **↩️ Full Undo / Redo:** Scene and resource modifications (`add_node`, `remove_node`, `instantiate_scene`, `reparent_node`, `set_node_property`, `create_resource`, `attach_script`, `connect_signal`) integrate with Godot's `EditorUndoRedoManager` (`Ctrl+Z` / `Ctrl+Y`).
+- **📚 In-Engine API Docs:** Look up real Godot 4 class methods, property signatures, and signals using the `/doc` command and `get_documentation` tool to eliminate hallucinated syntax.
+- **⚙️ Custom Instructions / Persona:** Set custom developer rules in Settings (e.g. static typing, specific architecture, 2D/3D project conventions).
+- **💾 Persistent Chat Sessions:** Chat history persists automatically across editor restarts in `user://little_helper_chat_history.json`.
+- **⚡ Slash Commands:** Quick editor shortcuts with autocompletion (`/selected`, `/select`, `/tree`, `/inspect`, `/tools`, `/doc`, `/script`, `/save`, `/open`, `/remove`, `/run`, `/stop`, `/logs`, `/setting`, `/eval`, `/clear`).
 - **🔒 Secure Credentials:** API keys are stored exclusively in `user://little_helper_settings.cfg`—never in `res://` or source control.
 - **📦 Zero External Dependencies:** In-engine chat uses Godot's native `HTTPRequest`. The MCP bridge uses standard Node.js built-ins (`net`, `readline`). No `npm install` or third-party packages required.
 
@@ -93,7 +98,9 @@ Type `/` in the prompt input to open the command autocomplete menu:
 | `/select` | `/select <node_path>` | Select and focus a node in the scene tree & inspector |
 | `/tree` | `/tree` | View full scene hierarchy |
 | `/inspect` | `/inspect <node_path>` | Inspect node properties, transform, and script |
-| `/tools` | `/tools` | List all 20 registered engine & MCP tools |
+| `/tools` | `/tools` | List all 24 registered engine & MCP tools |
+| `/doc` | `/doc <class>[.<symbol>]` | Fetch Godot 4 class/method API documentation |
+| `/script` | `/script` | Inspect currently active GDScript in script editor |
 | `/save` | `/save [all]` | Save the active scene (or `/save all` for all open scenes) |
 | `/open` | `/open <scene_path>` | Open a scene (`.tscn`) in the editor tab |
 | `/remove` | `/remove <node_path>` | Remove a node from scene with Undo/Redo |
@@ -108,7 +115,7 @@ Type `/` in the prompt input to open the command autocomplete menu:
 
 ## 🧰 Registered MCP Tools
 
-When connected via MCP, external agents have access to 20 real-time tools:
+When connected via MCP, external agents have access to 24 real-time tools:
 
 ### Scene & Node Hierarchy
 1. `get_selected_nodes`: Get currently selected editor nodes.
@@ -120,21 +127,25 @@ When connected via MCP, external agents have access to 20 real-time tools:
 7. `instantiate_scene`: Spawn packed sub-scene instances (`.tscn`) into the hierarchy with Undo/Redo.
 8. `reparent_node`: Move nodes to a new parent in the active scene with Undo/Redo.
 9. `set_node_property`: Mutate properties (types, vectors, colors) with Undo/Redo.
-10. `connect_signal`: Wire signals between nodes with Undo/Redo.
-11. `attach_script`: Assign a GDScript file to a node with Undo/Redo.
+10. `create_resource`: Instantiate Resources (e.g. `BoxShape3D`, `StandardMaterial3D`, `BoxMesh`) and assign to nodes or save to disk with Undo/Redo.
+11. `connect_signal`: Wire signals between nodes with Undo/Redo.
+12. `attach_script`: Assign a GDScript file to a node with Undo/Redo.
 
 ### Scene & Project Lifecycle
-12. `save_scene`: Save active scene or all modified scenes to disk.
-13. `open_scene`: Open and switch active editor scene from path.
-14. `run_project`: Launch debug instance of main scene or specified `.tscn`.
-15. `stop_project`: Kill the running debug instance.
-16. `get_debug_logs`: Tail the Godot engine log file (`user://logs/godot.log`).
-17. `project_setting`: Get, set, or search project settings in `project.godot`.
+13. `save_scene`: Save active scene or all modified scenes to disk.
+14. `open_scene`: Open and switch active editor scene from path.
+15. `run_project`: Launch debug instance of main scene or specified `.tscn`.
+16. `stop_project`: Kill the running debug instance.
+17. `get_debug_logs`: Tail the Godot engine log file (`user://logs/godot.log`).
+18. `project_setting`: Get, set, or search project settings in `project.godot`.
 
 ### Reflection & Code Execution
-18. `get_class_info`: Query Godot's built-in `ClassDB` for methods, properties, and signals.
-19. `read_script`: Read source code of any GDScript with optional line ranges.
-20. `execute_code`: Execute a dynamic GDScript snippet or expression inside the editor with scene root access.
+19. `get_class_info`: Query Godot's built-in `ClassDB` for methods, properties, and signals.
+20. `get_documentation`: Inspect full Godot 4 API documentation with exact method signatures and property types.
+21. `read_script`: Read source code of any GDScript with optional line ranges.
+22. `write_script`: Write or create complete GDScript files directly on disk and open them in Script Editor.
+23. `patch_script`: Replace targeted code blocks or functions in existing scripts.
+24. `execute_code`: Execute a dynamic GDScript snippet or expression inside the editor with scene root access.
 
 ---
 
