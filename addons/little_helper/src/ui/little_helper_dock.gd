@@ -50,6 +50,7 @@ const CROSS_SVG := ICONS_DIR + "cross.svg"
 const SETTINGS_FILE_PATH := "user://little_helper_settings.cfg"
 const INITIAL_GREETING := "Hi! Select a node or ask me to debug something.\nType [b]/help[/b] to see all available commands."
 const LLMClient = preload("res://addons/little_helper/src/agent/llm_client.gd")
+const Utils = preload("res://addons/little_helper/src/tools/tool_utils.gd")
 
 const COMMANDS: Array[Dictionary] = [
 	{
@@ -128,6 +129,16 @@ const COMMANDS: Array[Dictionary] = [
 		"usage": "/eval <code>"
 	},
 	{
+		"name": "/doc",
+		"desc": "Inspect Godot 4 class or method documentation from ClassDB",
+		"usage": "/doc <class_name>[.<symbol>]"
+	},
+	{
+		"name": "/script",
+		"desc": "Inspect the active GDScript open in Godot Script Editor",
+		"usage": "/script"
+	},
+	{
 		"name": "/error",
 		"desc": "Test error status indicator",
 		"usage": "/error"
@@ -140,6 +151,12 @@ var _is_busy: bool = false
 var _spin_tween: Tween = null
 var _llm_client: Node = null
 
+var pill_script: Button = null
+var pill_node: Button = null
+var pill_tree: Button = null
+var custom_instructions_edit: TextEdit = null
+var _code_blocks: Array[String] = []
+
 func _ready() -> void:
 	status_icon.custom_minimum_size = Vector2(16, 16)
 	status_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -149,6 +166,8 @@ func _ready() -> void:
 	set_idle()
 	
 	chat_history.bbcode_enabled = true
+	if not chat_history.meta_clicked.is_connected(_on_chat_meta_clicked):
+		chat_history.meta_clicked.connect(_on_chat_meta_clicked)
 	
 	# Connect chat interactions
 	if not send_button.pressed.is_connected(_on_send_pressed):
@@ -193,6 +212,8 @@ func _ready() -> void:
 	
 	_apply_panel_style()
 	_setup_provider_options()
+	_setup_custom_instructions_ui()
+	_setup_context_bar()
 	_load_settings()
 	
 	_update_button_icons()
@@ -205,8 +226,7 @@ func _ready() -> void:
 		_llm_client.request_failed.connect(_on_llm_error)
 		_llm_client.status_changed.connect(_on_llm_status_changed)
 	
-	if chat_history.get_parsed_text().is_empty():
-		_show_greeting()
+	_restore_chat_history()
 
 
 func _notification(what: int) -> void:
@@ -335,6 +355,9 @@ func _load_settings() -> void:
 		temp_slider.value = t_val
 		temp_label.text = "Temperature: %.2f" % t_val
 		
+		if is_instance_valid(custom_instructions_edit):
+			custom_instructions_edit.text = str(config.get_value("llm", "custom_instructions", ""))
+		
 		var b_enabled: bool = bool(config.get_value("bridge", "enabled", true))
 		mcp_enable_check.button_pressed = b_enabled
 		var b_port: int = int(config.get_value("bridge", "port", 9099))
@@ -421,6 +444,8 @@ func _on_save_settings_pressed() -> void:
 	config.set_value("llm", "api_key", api_key_input.text.strip_edges())
 	config.set_value("llm", "endpoint", endpoint_input.text.strip_edges())
 	config.set_value("llm", "temperature", temp_slider.value)
+	if is_instance_valid(custom_instructions_edit):
+		config.set_value("llm", "custom_instructions", custom_instructions_edit.text.strip_edges())
 	
 	config.set_value("bridge", "enabled", mcp_enable_check.button_pressed)
 	config.set_value("bridge", "port", int(mcp_port_input.text.strip_edges()))
@@ -845,6 +870,14 @@ func _get_command_icon(cmd_name: String) -> Texture2D:
 				return get_theme_icon("GDScript", "EditorIcons")
 			elif has_theme_icon("Script", "EditorIcons"):
 				return get_theme_icon("Script", "EditorIcons")
+		"/doc":
+			if has_theme_icon("HelpSearch", "EditorIcons"):
+				return get_theme_icon("HelpSearch", "EditorIcons")
+			elif has_theme_icon("Help", "EditorIcons"):
+				return get_theme_icon("Help", "EditorIcons")
+		"/script":
+			if has_theme_icon("Script", "EditorIcons"):
+				return get_theme_icon("Script", "EditorIcons")
 		"/clear":
 			return _get_svg_icon(TRASH_SVG, 14)
 		"/error":
@@ -1009,6 +1042,54 @@ func _on_prompt_submitted(text: String) -> void:
 			_append_message("LittleHelper", "[color=#ff7777]Eval error: %s[/color]" % str(res.get("error", "Execution failed.")))
 		return
 	
+	if clean_text == "/doc" or clean_text.begins_with("/doc "):
+		var arg := clean_text.substr(5).strip_edges()
+		if arg.is_empty():
+			_append_message("LittleHelper", "Usage: [b]/doc <class_name>[.<method_or_property>][/b]\nExample: [code]/doc CharacterBody3D[/code] or [code]/doc CharacterBody3D.move_and_slide[/code]")
+			return
+		var parts := arg.split(".", false, 1)
+		var c_name := parts[0]
+		var sym := parts[1] if parts.size() > 1 else ""
+		var res := LittleHelperToolRegistry.execute_tool("get_documentation", {
+			"class_name": c_name,
+			"symbol": sym
+		})
+		if res.has("error"):
+			_append_message("LittleHelper", "[color=#ff7777]%s[/color]" % str(res["error"]))
+		elif res.get("type") == "method":
+			_append_message("LittleHelper", "[b]%s.%s[/b] (Method):\n[code]%s[/code]" % [res["class"], res["name"], res["signature"]])
+		elif res.get("type") == "property":
+			_append_message("LittleHelper", "[b]%s.%s[/b] (Property):\n[code]var %s: %s[/code] (Hint: %s)" % [res["class"], res["name"], res["name"], res["property_type"], res.get("hint_string", "")])
+		elif res.get("type") == "signal":
+			_append_message("LittleHelper", "[b]%s.%s[/b] (Signal):\n[code]%s[/code]" % [res["class"], res["name"], res["signature"]])
+		else:
+			var lines := [
+				"[b]Class: %s[/b] (Inherits: %s)" % [res["class_name"], res.get("inherits", "Object")],
+				"\n[b]Key Methods (%d):[/b]" % res.get("methods", []).size()
+			]
+			for m in res.get("methods", []):
+				lines.append("  • [code]%s[/code]" % m)
+			if not res.get("properties", []).is_empty():
+				lines.append("\n[b]Key Properties:[/b]")
+				for p in res.get("properties", []):
+					lines.append("  • [code]%s[/code]" % p)
+			if not res.get("signals", []).is_empty():
+				lines.append("\n[b]Signals:[/b]")
+				for s in res.get("signals", []):
+					lines.append("  • [code]%s[/code]" % s)
+			_append_message("LittleHelper", "\n".join(lines))
+		return
+	
+	if clean_text == "/script":
+		var script: Script = Utils.get_active_script()
+		if not is_instance_valid(script):
+			_append_message("LittleHelper", "No GDScript is currently open in the Godot Script Editor.")
+			return
+		var path: String = script.resource_path if script.resource_path else "Unsaved Script"
+		var lines: PackedStringArray = script.source_code.split("\n")
+		_append_message("LittleHelper", "[b]Active Script:[/b] [code]%s[/code] (%d lines)\n[color=#888888]Tip: Enable the [b]📄 Script[/b] context pill to include this in prompts.[/color]" % [path, lines.size()])
+		return
+	
 	# If in External Agent (MCP Bridge) mode:
 	if mode_option.selected == 1:
 		_append_message("LittleHelper", "LittleHelper is set to [b]External Agent (MCP Bridge)[/b] mode.\n\n• Talk to your agent in your IDE (Antigravity, Cursor, Claude Desktop) to inspect & modify Godot live.\n• To chat directly in this dock using an API key or local Ollama, open Settings (gear icon) and select [b]In-Engine Chat[/b].")
@@ -1016,7 +1097,9 @@ func _on_prompt_submitted(text: String) -> void:
 	
 	# Dispatch to In-Engine LLM Client
 	if _llm_client:
-		_llm_client.send_chat(clean_text)
+		var context := _gather_prompt_context()
+		var full_prompt := clean_text + context
+		_llm_client.send_chat(full_prompt)
 	else:
 		_append_message("LittleHelper", "[color=#ff6666]Error: LLM client is not initialized.[/color]")
 
@@ -1044,6 +1127,7 @@ func _on_llm_status_changed(busy: bool, msg: String) -> void:
 
 func _on_clear_pressed() -> void:
 	chat_history.clear()
+	_code_blocks.clear()
 	set_idle()
 	if _llm_client:
 		_llm_client.clear_history()
@@ -1055,4 +1139,210 @@ func _append_message(sender: String, message: String) -> void:
 	var avatar := ""
 	if sender == "LittleHelper" and ResourceLoader.exists("res://addons/little_helper/icon.svg"):
 		avatar = "[img=18x18]res://addons/little_helper/icon.svg[/img] "
-	chat_history.append_text("%s[b][color=%s]%s:[/color][/b] %s\n\n" % [avatar, color, sender, message])
+	
+	var formatted_message := message
+	if sender == "LittleHelper" and (message.contains("```gdscript") or message.contains("```")):
+		formatted_message = _inject_code_actions(message)
+	
+	chat_history.append_text("%s[b][color=%s]%s:[/color][/b] %s\n\n" % [avatar, color, sender, formatted_message])
+
+
+func _inject_code_actions(msg: String) -> String:
+	var regex := RegEx.new()
+	var err := regex.compile("```(?:gdscript)?\\s*\\n([\\s\\S]*?)\\n```")
+	if err != OK:
+		return msg
+	
+	var matches := regex.search_all(msg)
+	if matches.is_empty():
+		return msg
+	
+	var result := msg
+	for i in range(matches.size() - 1, -1, -1):
+		var m := matches[i]
+		var code_str := m.get_string(1).strip_edges()
+		var block_idx := _code_blocks.size()
+		_code_blocks.append(code_str)
+		
+		var original_block := m.get_string(0)
+		var action_bar := "\n[color=#888888]Actions:[/color] [url=copy:%d][color=#66ccff]📋 Copy[/color][/url]  |  [url=apply:%d][color=#66ffaa]⚡ Apply to Active Script[/color][/url]  |  [url=new_script:%d][color=#ffcc66]📄 Save as New Script[/color][/url]" % [block_idx, block_idx, block_idx]
+		var replacement := original_block + "\n" + action_bar
+		result = result.substr(0, m.get_start()) + replacement + result.substr(m.get_end())
+	
+	return result
+
+
+func _on_chat_meta_clicked(meta) -> void:
+	var meta_str := str(meta)
+	if meta_str.begins_with("copy:"):
+		var idx := int(meta_str.substr(5))
+		if idx >= 0 and idx < _code_blocks.size():
+			DisplayServer.clipboard_set(_code_blocks[idx])
+			_append_message("LittleHelper", "[color=#66ff99]✓ Code snippet copied to clipboard![/color]")
+	elif meta_str.begins_with("apply:"):
+		var idx := int(meta_str.substr(6))
+		if idx >= 0 and idx < _code_blocks.size():
+			var code: String = _code_blocks[idx]
+			var script: Script = Utils.get_active_script()
+			if not is_instance_valid(script):
+				_append_message("LittleHelper", "[color=#ffcc66]⚠️ Please open a script in Godot's Script Editor first to apply this code.[/color]")
+				return
+			
+			var path: String = script.resource_path
+			if path.is_empty():
+				_append_message("LittleHelper", "[color=#ff7777]Active script is unsaved. Please save it first.[/color]")
+				return
+			
+			var fa := FileAccess.open(path, FileAccess.WRITE)
+			if fa:
+				fa.store_string(code)
+				fa.close()
+				if Engine.is_editor_hint() and EditorInterface != null:
+					EditorInterface.get_resource_filesystem().scan()
+					script.source_code = code
+					script.reload()
+					EditorInterface.edit_script(script)
+				_append_message("LittleHelper", "[color=#66ff99]✓ Successfully applied code to [b]%s[/b]![/color]" % path.get_file())
+			else:
+				_append_message("LittleHelper", "[color=#ff7777]Failed to write to %s.[/color]" % path)
+	elif meta_str.begins_with("new_script:"):
+		var idx := int(meta_str.substr(11))
+		if idx >= 0 and idx < _code_blocks.size():
+			var code := _code_blocks[idx]
+			var script_name := "new_script.gd"
+			var regex := RegEx.new()
+			if regex.compile("class_name\\s+([A-Za-z0-9_]+)") == OK:
+				var match_res := regex.search(code)
+				if match_res:
+					script_name = match_res.get_string(1).to_snake_case() + ".gd"
+			var save_path := "res://" + script_name
+			var res := LittleHelperToolRegistry.execute_tool("write_script", {
+				"file_path": save_path,
+				"content": code,
+				"open_in_editor": true
+			})
+			if res.has("success"):
+				_append_message("LittleHelper", "[color=#66ff99]✓ Saved and opened new script at [b]%s[/b]![/color]" % save_path)
+			else:
+				_append_message("LittleHelper", "[color=#ff7777]Error: %s[/color]" % str(res.get("error", "Failed to create script.")))
+
+
+func _setup_context_bar() -> void:
+	if not is_instance_valid(input_box):
+		return
+	var vbox := input_box.get_parent() as VBoxContainer
+	if not vbox:
+		return
+	
+	var context_bar := HBoxContainer.new()
+	context_bar.name = "ContextBar"
+	context_bar.add_theme_constant_override("separation", 6)
+	
+	var label := Label.new()
+	label.text = "Context:"
+	label.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8, 1.0))
+	label.add_theme_font_size_override("font_size", 11)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	context_bar.add_child(label)
+	
+	pill_script = Button.new()
+	pill_script.text = "📄 Script"
+	pill_script.toggle_mode = true
+	pill_script.tooltip_text = "Auto-attach active GDScript in the editor to prompts"
+	pill_script.add_theme_font_size_override("font_size", 11)
+	context_bar.add_child(pill_script)
+	
+	pill_node = Button.new()
+	pill_node.text = "🎯 Node"
+	pill_node.toggle_mode = true
+	pill_node.tooltip_text = "Auto-attach selected node in inspector to prompts"
+	pill_node.add_theme_font_size_override("font_size", 11)
+	context_bar.add_child(pill_node)
+	
+	pill_tree = Button.new()
+	pill_tree.text = "🌳 Scene"
+	pill_tree.toggle_mode = true
+	pill_tree.tooltip_text = "Auto-attach active scene tree summary to prompts"
+	pill_tree.add_theme_font_size_override("font_size", 11)
+	context_bar.add_child(pill_tree)
+	
+	var input_idx := input_box.get_index()
+	vbox.add_child(context_bar)
+	vbox.move_child(context_bar, input_idx)
+
+
+func _setup_custom_instructions_ui() -> void:
+	if not is_instance_valid(direct_ai_section):
+		return
+	var label := Label.new()
+	label.text = "Custom Instructions / Project Persona:"
+	label.add_theme_font_size_override("font_size", 12)
+	direct_ai_section.add_child(label)
+	
+	custom_instructions_edit = TextEdit.new()
+	custom_instructions_edit.custom_minimum_size = Vector2(0, 60)
+	custom_instructions_edit.placeholder_text = "e.g. 2D platformer, use static typing (-> void), prefer composition, Godot 4 conventions..."
+	custom_instructions_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	custom_instructions_edit.add_theme_font_size_override("font_size", 11)
+	direct_ai_section.add_child(custom_instructions_edit)
+
+
+func _restore_chat_history() -> void:
+	if not _llm_client:
+		return
+	var hist: Array[Dictionary] = _llm_client.load_history()
+	if hist.is_empty():
+		_show_greeting()
+		return
+	
+	chat_history.clear()
+	for m in hist:
+		var sender := "You" if m.get("role") == "user" else "LittleHelper"
+		var content: String = str(m.get("content", ""))
+		if sender == "You":
+			var ctx_pos := content.find("\n\n[Active Editor Context]")
+			if ctx_pos != -1:
+				content = content.substr(0, ctx_pos)
+		_append_message(sender, content)
+
+
+func _gather_prompt_context() -> String:
+	var parts: Array[String] = []
+	
+	if pill_script and pill_script.button_pressed:
+		var script: Script = Utils.get_active_script()
+		if is_instance_valid(script):
+			var path: String = script.resource_path if script.resource_path else "active_script.gd"
+			var code: String = script.source_code
+			if code.length() > 3500:
+				code = code.substr(0, 3500) + "\n# ... (truncated for brevity)"
+			parts.append("--- Active Script (%s) ---\n```gdscript\n%s\n```" % [path, code])
+		else:
+			parts.append("--- Active Script ---\n(No script currently open in Script Editor)")
+	
+	if pill_node and pill_node.button_pressed:
+		var sel: EditorSelection = Utils.get_editor_selection()
+		if sel:
+			var nodes: Array[Node] = sel.get_selected_nodes()
+			if not nodes.is_empty():
+				var node_info: Array[String] = []
+				for n in nodes:
+					node_info.append("Node '%s' (%s) at '%s'" % [n.name, n.get_class(), n.get_path()])
+				parts.append("--- Selected Node(s) ---\n" + "\n".join(node_info))
+			else:
+				parts.append("--- Selected Node(s) ---\n(No node currently selected)")
+	
+	if pill_tree and pill_tree.button_pressed:
+		var root: Node = Utils.get_editor_root()
+		if is_instance_valid(root):
+			var tree_summary: Array[String] = [root.name + " (" + root.get_class() + ")"]
+			for c in root.get_children():
+				tree_summary.append("  - " + c.name + " (" + c.get_class() + ")")
+			parts.append("--- Scene Hierarchy ---\n" + "\n".join(tree_summary.slice(0, 25)))
+		else:
+			parts.append("--- Scene Hierarchy ---\n(No open scene)")
+	
+	if parts.is_empty():
+		return ""
+	return "\n\n[Active Editor Context]\n" + "\n\n".join(parts)
+

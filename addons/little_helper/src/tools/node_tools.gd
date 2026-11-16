@@ -152,12 +152,45 @@ static func get_tools() -> Array[Dictionary]:
 				},
 				"required": ["node_path", "script_path"]
 			}
+		},
+		{
+			"name": "create_resource",
+			"description": "Instantiates a new Godot Resource (e.g. 'BoxShape3D', 'StandardMaterial3D', 'SphereMesh', 'StyleBoxFlat'), configures its properties, and optionally assigns it to a node or saves it to disk with Undo/Redo.",
+			"parameters": {
+				"type": "object",
+				"properties": {
+					"resource_type": {
+						"type": "string",
+						"description": "The Godot Resource class to create (e.g. 'BoxShape3D', 'SphereShape2D', 'StandardMaterial3D', 'SphereMesh', 'StyleBoxFlat')."
+					},
+					"properties": {
+						"type": "object",
+						"description": "Dictionary of properties to set on the resource (e.g. {'size': [2, 2, 2]}, {'albedo_color': '#ff0000'})."
+					},
+					"node_path": {
+						"type": "string",
+						"description": "Optional: Path to the node to assign this resource to (e.g. 'Player/CollisionShape3D')."
+					},
+					"property_name": {
+						"type": "string",
+						"description": "Optional: Property name on the node to assign this resource to (e.g. 'shape', 'mesh', 'material_override')."
+					},
+					"save_path": {
+						"type": "string",
+						"description": "Optional: File path to save the resource as a .tres or .res file (e.g. 'res://materials/player_mat.tres')."
+					}
+				},
+				"required": ["resource_type"]
+			}
 		}
 	]
 
 
 static func has_tool(tool_name: String) -> bool:
-	return tool_name in ["add_node", "remove_node", "instantiate_scene", "reparent_node", "set_node_property", "connect_signal", "attach_script"]
+	return tool_name in [
+		"add_node", "remove_node", "instantiate_scene", "reparent_node",
+		"set_node_property", "connect_signal", "attach_script", "create_resource"
+	]
 
 
 static func execute(tool_name: String, args: Dictionary) -> Dictionary:
@@ -176,6 +209,8 @@ static func execute(tool_name: String, args: Dictionary) -> Dictionary:
 			return _connect_signal(args)
 		"attach_script":
 			return _attach_script(args)
+		"create_resource":
+			return _create_resource(args)
 	return {"error": "Tool '%s' not found in NodeTools" % tool_name}
 
 
@@ -484,4 +519,70 @@ static func _attach_script(args: Dictionary) -> Dictionary:
 		"attached_script": script_path,
 		"previous_script": old_script.resource_path if old_script and "resource_path" in old_script else ""
 	}
+
+
+static func _create_resource(args: Dictionary) -> Dictionary:
+	var res_type: String = str(args.get("resource_type", "")).strip_edges()
+	if res_type.is_empty():
+		return {"error": "Parameter 'resource_type' is required."}
+	
+	if not ClassDB.class_exists(res_type):
+		return {"error": "Resource type '%s' does not exist in ClassDB." % res_type}
+	
+	if not ClassDB.can_instantiate(res_type):
+		return {"error": "Cannot instantiate resource type '%s'." % res_type}
+	
+	var inst = ClassDB.instantiate(res_type)
+	if not inst is Resource:
+		return {"error": "'%s' is not a Godot Resource." % res_type}
+	
+	var res: Resource = inst
+	var props: Dictionary = args.get("properties", {})
+	for k in props.keys():
+		var prop_name := str(k)
+		if prop_name in res:
+			var old_val = res.get(prop_name)
+			var new_val = Utils.parse_prop_val(old_val, props[k])
+			res.set(prop_name, new_val)
+	
+	var save_path: String = str(args.get("save_path", "")).strip_edges()
+	if not save_path.is_empty():
+		if not save_path.begins_with("res://") and not save_path.begins_with("user://"):
+			save_path = "res://" + save_path
+		var dir := save_path.get_base_dir()
+		DirAccess.make_dir_recursive_absolute(dir)
+		var save_err := ResourceSaver.save(res, save_path)
+		if save_err != OK:
+			return {"error": "Failed to save resource to '%s' (code %d)" % [save_path, save_err]}
+	
+	var node_path: String = str(args.get("node_path", "")).strip_edges()
+	var prop_name: String = str(args.get("property_name", "")).strip_edges()
+	if not node_path.is_empty() and not prop_name.is_empty():
+		var root := Utils.get_editor_root()
+		if not is_instance_valid(root):
+			return {"error": "No scene currently open to assign resource to node."}
+		var target := Utils.find_node_in_scene(root, node_path)
+		if not is_instance_valid(target):
+			return {"error": "Node not found at '%s'" % node_path}
+		if not prop_name in target:
+			return {"error": "Property '%s' does not exist on node '%s'" % [prop_name, target.name]}
+		
+		var undo_redo := Utils.get_editor_undo_redo()
+		var old_prop_val = target.get(prop_name)
+		if undo_redo:
+			undo_redo.create_action("LittleHelper: Assign %s to %s.%s" % [res_type, target.name, prop_name])
+			undo_redo.add_do_property(target, prop_name, res)
+			undo_redo.add_undo_property(target, prop_name, old_prop_val)
+			undo_redo.commit_action()
+		else:
+			target.set(prop_name, res)
+	
+	return {
+		"success": true,
+		"resource_type": res_type,
+		"saved_to": save_path if not save_path.is_empty() else null,
+		"assigned_node": node_path if not node_path.is_empty() else null,
+		"assigned_property": prop_name if not prop_name.is_empty() else null
+	}
+
 
