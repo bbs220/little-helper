@@ -171,10 +171,17 @@ metadata/_edit_lock_ = true
 layout_mode = 2
 metadata/_edit_lock_ = true
 
+[node name="AttachButton" type="Button" parent="VBoxContainer/InputBox" unique_id=1628394012]
+layout_mode = 2
+tooltip_text = "Attach Context or Actions (@ / /)"
+text = "+"
+flat = true
+metadata/_edit_lock_ = true
+
 [node name="PromptInput" type="LineEdit" parent="VBoxContainer/InputBox" unique_id=872028880]
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Running as MCP server (use /help for tools)..."
+placeholder_text = "Ask anything, @ to mention, / for actions"
 metadata/_edit_lock_ = true
 
 [node name="SendButton" type="Button" parent="VBoxContainer/InputBox" unique_id=1450366983]

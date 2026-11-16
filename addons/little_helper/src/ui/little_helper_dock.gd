@@ -11,6 +11,7 @@ extends MarginContainer
 @onready var autocomplete_box: PanelContainer = $VBoxContainer/AutocompleteBox
 @onready var autocomplete_list: ItemList = $VBoxContainer/AutocompleteBox/AutocompleteList
 @onready var input_box: HBoxContainer = $VBoxContainer/InputBox
+@onready var attach_button: Button = $VBoxContainer/InputBox/AttachButton
 @onready var prompt_input: LineEdit = $VBoxContainer/InputBox/PromptInput
 @onready var send_button: Button = $VBoxContainer/InputBox/SendButton
 
@@ -42,15 +43,52 @@ signal settings_saved
 const ICONS_DIR := "res://addons/little_helper/icons/"
 const TRASH_SVG := ICONS_DIR + "trash.svg"
 const SEND_SVG := ICONS_DIR + "send.svg"
+const PLUS_SVG := ICONS_DIR + "plus.svg"
 const CHEVRON_DOWN_SVG := ICONS_DIR + "chevron_down.svg"
 const CHEVRON_UP_SVG := ICONS_DIR + "chevron_up.svg"
 const SETTINGS_SVG := ICONS_DIR + "settings.svg"
 const CIRCLE_ARROW_SVG := ICONS_DIR + "circle_arrow.svg"
 const CROSS_SVG := ICONS_DIR + "cross.svg"
+const SCRIPT_SVG := ICONS_DIR + "script.svg"
+const NODE_SVG := ICONS_DIR + "node.svg"
+const TREE_SVG := ICONS_DIR + "tree.svg"
+const BOOK_SVG := ICONS_DIR + "book.svg"
+const TERMINAL_SVG := ICONS_DIR + "terminal.svg"
+const FOLDER_SVG := ICONS_DIR + "folder.svg"
+const BOLT_SVG := ICONS_DIR + "bolt.svg"
+const COPY_SVG := ICONS_DIR + "copy.svg"
 const SETTINGS_FILE_PATH := "user://little_helper_settings.cfg"
-const INITIAL_GREETING := "Hi! Select a node or ask me to debug something.\nType [b]/help[/b] to see all available commands."
+const INITIAL_GREETING := "Hi! Ask me anything, use [color=#66ccff][b]@[/b][/color] to attach editor context (@script, @node, @tree), or [color=#eebb44][b]/[/b][/color] for actions.\nClick [b]+[/b] to attach files or resources."
 const LLMClient = preload("res://addons/little_helper/src/agent/llm_client.gd")
 const Utils = preload("res://addons/little_helper/src/tools/tool_utils.gd")
+
+const CONTEXT_MENTIONS: Array[Dictionary] = [
+	{
+		"name": "@script",
+		"desc": "Active GDScript in Godot Script Editor",
+		"usage": "@script"
+	},
+	{
+		"name": "@node",
+		"desc": "Selected node in scene tree & inspector",
+		"usage": "@node"
+	},
+	{
+		"name": "@tree",
+		"desc": "Active scene node tree hierarchy",
+		"usage": "@tree"
+	},
+	{
+		"name": "@docs",
+		"desc": "Engine documentation from ClassDB",
+		"usage": "@docs"
+	},
+	{
+		"name": "@logs",
+		"desc": "Recent Godot debug & error logs",
+		"usage": "@logs"
+	}
+]
 
 const COMMANDS: Array[Dictionary] = [
 	{
@@ -151,9 +189,8 @@ var _is_busy: bool = false
 var _spin_tween: Tween = null
 var _llm_client: Node = null
 
-var pill_script: Button = null
-var pill_node: Button = null
-var pill_tree: Button = null
+var _attach_popup: PopupMenu = null
+var _file_dialog: FileDialog = null
 var custom_instructions_edit: TextEdit = null
 var _code_blocks: Array[String] = []
 
@@ -170,6 +207,8 @@ func _ready() -> void:
 		chat_history.meta_clicked.connect(_on_chat_meta_clicked)
 	
 	# Connect chat interactions
+	if not attach_button.pressed.is_connected(_on_attach_button_pressed):
+		attach_button.pressed.connect(_on_attach_button_pressed)
 	if not send_button.pressed.is_connected(_on_send_pressed):
 		send_button.pressed.connect(_on_send_pressed)
 	if not prompt_input.text_submitted.is_connected(_on_prompt_submitted):
@@ -213,7 +252,7 @@ func _ready() -> void:
 	_apply_panel_style()
 	_setup_provider_options()
 	_setup_custom_instructions_ui()
-	_setup_context_bar()
+	_setup_attach_popup()
 	_load_settings()
 	
 	_update_button_icons()
@@ -378,7 +417,7 @@ func _on_mode_selected(idx: int) -> void:
 		0: # In-Engine Chat
 			direct_ai_section.visible = true
 			mcp_section.visible = false
-			prompt_input.placeholder_text = "Ask LittleHelper..."
+			prompt_input.placeholder_text = "Ask anything, @ to mention, / for actions"
 		1: # External Agent (MCP Bridge)
 			direct_ai_section.visible = false
 			mcp_section.visible = true
@@ -387,7 +426,7 @@ func _on_mode_selected(idx: int) -> void:
 		2: # Dual Mode
 			direct_ai_section.visible = true
 			mcp_section.visible = true
-			prompt_input.placeholder_text = "Ask LittleHelper or call via MCP..."
+			prompt_input.placeholder_text = "Ask anything, @ to mention, / for actions"
 			_update_mcp_status()
 
 
@@ -565,6 +604,18 @@ func _update_button_icons() -> void:
 	elif Engine.is_editor_hint() and has_theme_icon("ArrowUp", "EditorIcons"):
 		send_button.icon = get_theme_icon("ArrowUp", "EditorIcons")
 
+	# Attach icon for AttachButton
+	if is_instance_valid(attach_button):
+		var plus_icon := _get_svg_icon(PLUS_SVG, 16)
+		if plus_icon:
+			attach_button.icon = plus_icon
+			attach_button.text = ""
+		elif Engine.is_editor_hint() and has_theme_icon("Add", "EditorIcons"):
+			attach_button.icon = get_theme_icon("Add", "EditorIcons")
+			attach_button.text = ""
+		else:
+			attach_button.text = "+"
+
 	# Close icon for CloseSettingsButton
 	if is_instance_valid(close_settings_button):
 		var cross_icon := _get_svg_icon(CROSS_SVG, 14)
@@ -704,39 +755,49 @@ func _on_prompt_text_changed(new_text: String) -> void:
 
 
 func _update_autocomplete(text: String) -> void:
-	if not text.begins_with("/"):
+	var caret := prompt_input.caret_column
+	var text_before_caret := text.substr(0, caret)
+	var last_space := text_before_caret.rfind(" ")
+	var current_word := text_before_caret.substr(last_space + 1)
+	
+	var is_slash_cmd := (last_space == -1 and current_word.begins_with("/"))
+	var is_mention := current_word.begins_with("@")
+	
+	if not is_slash_cmd and not is_mention:
 		_hide_autocomplete()
 		return
 	
-	# If text contains a space after the slash (e.g. "/inspect foo"), user is typing arguments
-	if text.contains(" "):
-		_hide_autocomplete()
-		return
-	
-	var query := text.to_lower()
 	var matches: Array[Dictionary] = []
-	for cmd in COMMANDS:
-		var c_name: String = cmd["name"]
-		if query == "/" or c_name.to_lower().begins_with(query):
-			matches.append(cmd)
+	var query := current_word.to_lower()
+	
+	if is_mention:
+		for item in CONTEXT_MENTIONS:
+			var m_name: String = item["name"]
+			if query == "@" or m_name.to_lower().begins_with(query):
+				matches.append(item)
+	elif is_slash_cmd:
+		for cmd in COMMANDS:
+			var c_name: String = cmd["name"]
+			if query == "/" or c_name.to_lower().begins_with(query):
+				matches.append(cmd)
 	
 	if matches.is_empty():
 		_hide_autocomplete()
 		return
 	
 	autocomplete_list.clear()
-	for cmd in matches:
-		var label := "%s  —  %s" % [cmd["name"], cmd["desc"]]
-		var icon := _get_command_icon(cmd["name"])
+	for item in matches:
+		var label := "%s  —  %s" % [item["name"], item["desc"]]
+		var icon: Texture2D = _get_mention_icon(item["name"]) if is_mention else _get_command_icon(item["name"])
 		var idx := autocomplete_list.add_item(label, icon)
-		autocomplete_list.set_item_metadata(idx, cmd["name"])
-		autocomplete_list.set_item_tooltip(idx, cmd["desc"])
+		autocomplete_list.set_item_metadata(idx, item["name"])
+		autocomplete_list.set_item_tooltip(idx, item["desc"])
 	
 	autocomplete_list.select(0)
 	autocomplete_list.ensure_current_is_visible()
 	
 	var row_height := 26.0
-	var total_h := clampf(matches.size() * row_height + 10.0, 36.0, 130.0)
+	var total_h := clampf(matches.size() * row_height + 10.0, 36.0, 140.0)
 	autocomplete_box.custom_minimum_size.y = total_h
 	autocomplete_box.visible = true
 
@@ -756,10 +817,14 @@ func _on_prompt_gui_input(event: InputEvent) -> void:
 				if autocomplete_box.visible and autocomplete_list.item_count > 0:
 					_apply_selected_autocomplete()
 					prompt_input.accept_event()
-				elif prompt_input.text.begins_with("/"):
+				else:
 					_update_autocomplete(prompt_input.text)
 					if autocomplete_box.visible and autocomplete_list.item_count > 0:
 						_apply_selected_autocomplete()
+						prompt_input.accept_event()
+			KEY_ENTER, KEY_KP_ENTER:
+				if autocomplete_box.visible and autocomplete_list.item_count > 0:
+					_apply_selected_autocomplete()
 					prompt_input.accept_event()
 			KEY_ESCAPE:
 				if autocomplete_box.visible:
@@ -791,9 +856,17 @@ func _on_autocomplete_item_clicked(index: int, _at_position: Vector2, _mouse_but
 func _apply_autocomplete_index(index: int) -> void:
 	if index < 0 or index >= autocomplete_list.item_count:
 		return
-	var cmd_name: String = autocomplete_list.get_item_metadata(index)
-	prompt_input.text = cmd_name + " "
-	prompt_input.caret_column = prompt_input.text.length()
+	var item_name: String = autocomplete_list.get_item_metadata(index)
+	var text := prompt_input.text
+	var caret := prompt_input.caret_column
+	var text_before_caret := text.substr(0, caret)
+	var last_space := text_before_caret.rfind(" ")
+	var word_start := last_space + 1
+	var text_after_caret := text.substr(caret)
+	
+	var new_text := text.substr(0, word_start) + item_name + " " + text_after_caret
+	prompt_input.text = new_text
+	prompt_input.caret_column = word_start + item_name.length() + 1
 	_hide_autocomplete()
 	prompt_input.grab_focus()
 
@@ -803,6 +876,36 @@ func _hide_autocomplete() -> void:
 		autocomplete_box.visible = false
 	if is_instance_valid(autocomplete_list):
 		autocomplete_list.clear()
+
+
+func _get_mention_icon(mention_name: String) -> Texture2D:
+	match mention_name:
+		"@script":
+			var ic := _get_svg_icon(SCRIPT_SVG, 16)
+			if ic: return ic
+			if Engine.is_editor_hint() and has_theme_icon("Script", "EditorIcons"):
+				return get_theme_icon("Script", "EditorIcons")
+		"@node":
+			var ic := _get_svg_icon(NODE_SVG, 16)
+			if ic: return ic
+			if Engine.is_editor_hint() and has_theme_icon("Node", "EditorIcons"):
+				return get_theme_icon("Node", "EditorIcons")
+		"@tree":
+			var ic := _get_svg_icon(TREE_SVG, 16)
+			if ic: return ic
+			if Engine.is_editor_hint() and has_theme_icon("Tree", "EditorIcons"):
+				return get_theme_icon("Tree", "EditorIcons")
+		"@docs":
+			var ic := _get_svg_icon(BOOK_SVG, 16)
+			if ic: return ic
+			if Engine.is_editor_hint() and has_theme_icon("Help", "EditorIcons"):
+				return get_theme_icon("Help", "EditorIcons")
+		"@logs":
+			var ic := _get_svg_icon(TERMINAL_SVG, 16)
+			if ic: return ic
+			if Engine.is_editor_hint() and has_theme_icon("FileList", "EditorIcons"):
+				return get_theme_icon("FileList", "EditorIcons")
+	return null
 
 
 func _get_command_icon(cmd_name: String) -> Texture2D:
@@ -1087,7 +1190,7 @@ func _on_prompt_submitted(text: String) -> void:
 			return
 		var path: String = script.resource_path if script.resource_path else "Unsaved Script"
 		var lines: PackedStringArray = script.source_code.split("\n")
-		_append_message("LittleHelper", "[b]Active Script:[/b] [code]%s[/code] (%d lines)\n[color=#888888]Tip: Enable the [b]📄 Script[/b] context pill to include this in prompts.[/color]" % [path, lines.size()])
+		_append_message("LittleHelper", "[b]Active Script:[/b] [code]%s[/code] (%d lines)\n[color=#888888]Tip: Type [color=#66ccff][b]@script[/b][/color] in your prompt to include this script as context.[/color]" % [path, lines.size()])
 		return
 	
 	# If in External Agent (MCP Bridge) mode:
@@ -1097,7 +1200,7 @@ func _on_prompt_submitted(text: String) -> void:
 	
 	# Dispatch to In-Engine LLM Client
 	if _llm_client:
-		var context := _gather_prompt_context()
+		var context := _gather_prompt_context(clean_text)
 		var full_prompt := clean_text + context
 		_llm_client.send_chat(full_prompt)
 	else:
@@ -1141,7 +1244,11 @@ func _append_message(sender: String, message: String) -> void:
 		avatar = "[img=18x18]res://addons/little_helper/icon.svg[/img] "
 	
 	var formatted_message := message
-	if sender == "LittleHelper" and (message.contains("```gdscript") or message.contains("```")):
+	if sender == "You":
+		var mention_regex := RegEx.new()
+		if mention_regex.compile("(@[A-Za-z0-9_]+)") == OK:
+			formatted_message = mention_regex.sub(formatted_message, "[color=#66ccff][b]$1[/b][/color]", true)
+	elif sender == "LittleHelper" and (message.contains("```gdscript") or message.contains("```")):
 		formatted_message = _inject_code_actions(message)
 	
 	chat_history.append_text("%s[b][color=%s]%s:[/color][/b] %s\n\n" % [avatar, color, sender, formatted_message])
@@ -1165,7 +1272,7 @@ func _inject_code_actions(msg: String) -> String:
 		_code_blocks.append(code_str)
 		
 		var original_block := m.get_string(0)
-		var action_bar := "\n[color=#888888]Actions:[/color] [url=copy:%d][color=#66ccff]📋 Copy[/color][/url]  |  [url=apply:%d][color=#66ffaa]⚡ Apply to Active Script[/color][/url]  |  [url=new_script:%d][color=#ffcc66]📄 Save as New Script[/color][/url]" % [block_idx, block_idx, block_idx]
+		var action_bar := "\n[color=#888888]Actions:[/color] [url=copy:%d][color=#66ccff][Copy][/color][/url]  |  [url=apply:%d][color=#66ffaa][Apply to Script][/color][/url]  |  [url=new_script:%d][color=#ffcc66][Save as File][/color][/url]" % [block_idx, block_idx, block_idx]
 		var replacement := original_block + "\n" + action_bar
 		result = result.substr(0, m.get_start()) + replacement + result.substr(m.get_end())
 	
@@ -1178,14 +1285,14 @@ func _on_chat_meta_clicked(meta) -> void:
 		var idx := int(meta_str.substr(5))
 		if idx >= 0 and idx < _code_blocks.size():
 			DisplayServer.clipboard_set(_code_blocks[idx])
-			_append_message("LittleHelper", "[color=#66ff99]✓ Code snippet copied to clipboard![/color]")
+			_append_message("LittleHelper", "[color=#66ff99]Code snippet copied to clipboard.[/color]")
 	elif meta_str.begins_with("apply:"):
 		var idx := int(meta_str.substr(6))
 		if idx >= 0 and idx < _code_blocks.size():
 			var code: String = _code_blocks[idx]
 			var script: Script = Utils.get_active_script()
 			if not is_instance_valid(script):
-				_append_message("LittleHelper", "[color=#ffcc66]⚠️ Please open a script in Godot's Script Editor first to apply this code.[/color]")
+				_append_message("LittleHelper", "[color=#ffcc66]Please open a script in Godot's Script Editor first to apply this code.[/color]")
 				return
 			
 			var path: String = script.resource_path
@@ -1202,7 +1309,7 @@ func _on_chat_meta_clicked(meta) -> void:
 					script.source_code = code
 					script.reload()
 					EditorInterface.edit_script(script)
-				_append_message("LittleHelper", "[color=#66ff99]✓ Successfully applied code to [b]%s[/b]![/color]" % path.get_file())
+				_append_message("LittleHelper", "[color=#66ff99]Successfully applied code to [b]%s[/b].[/color]" % path.get_file())
 			else:
 				_append_message("LittleHelper", "[color=#ff7777]Failed to write to %s.[/color]" % path)
 	elif meta_str.begins_with("new_script:"):
@@ -1222,53 +1329,127 @@ func _on_chat_meta_clicked(meta) -> void:
 				"open_in_editor": true
 			})
 			if res.has("success"):
-				_append_message("LittleHelper", "[color=#66ff99]✓ Saved and opened new script at [b]%s[/b]![/color]" % save_path)
+				_append_message("LittleHelper", "[color=#66ff99]Saved and opened new script at [b]%s[/b].[/color]" % save_path)
 			else:
 				_append_message("LittleHelper", "[color=#ff7777]Error: %s[/color]" % str(res.get("error", "Failed to create script.")))
 
 
-func _setup_context_bar() -> void:
-	if not is_instance_valid(input_box):
+func _setup_attach_popup() -> void:
+	if is_instance_valid(_attach_popup):
 		return
-	var vbox := input_box.get_parent() as VBoxContainer
-	if not vbox:
-		return
+	_attach_popup = PopupMenu.new()
+	_attach_popup.name = "AttachPopup"
+	add_child(_attach_popup)
 	
-	var context_bar := HBoxContainer.new()
-	context_bar.name = "ContextBar"
-	context_bar.add_theme_constant_override("separation", 6)
+	var ic_script := _get_svg_icon(SCRIPT_SVG, 16)
+	var ic_node := _get_svg_icon(NODE_SVG, 16)
+	var ic_tree := _get_svg_icon(TREE_SVG, 16)
+	var ic_docs := _get_svg_icon(BOOK_SVG, 16)
+	var ic_logs := _get_svg_icon(TERMINAL_SVG, 16)
+	var ic_folder := _get_svg_icon(FOLDER_SVG, 16)
+	var ic_bolt := _get_svg_icon(BOLT_SVG, 16)
 	
-	var label := Label.new()
-	label.text = "Context:"
-	label.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8, 1.0))
-	label.add_theme_font_size_override("font_size", 11)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	context_bar.add_child(label)
+	if ic_script:
+		_attach_popup.add_icon_item(ic_script, "Active Script (@script)", 0)
+	else:
+		_attach_popup.add_item("Active Script (@script)", 0)
+		
+	if ic_node:
+		_attach_popup.add_icon_item(ic_node, "Selected Node (@node)", 1)
+	else:
+		_attach_popup.add_item("Selected Node (@node)", 1)
+		
+	if ic_tree:
+		_attach_popup.add_icon_item(ic_tree, "Scene Tree (@tree)", 2)
+	else:
+		_attach_popup.add_item("Scene Tree (@tree)", 2)
+		
+	if ic_docs:
+		_attach_popup.add_icon_item(ic_docs, "Documentation (@docs)", 3)
+	else:
+		_attach_popup.add_item("Documentation (@docs)", 3)
+		
+	if ic_logs:
+		_attach_popup.add_icon_item(ic_logs, "Debug Logs (@logs)", 4)
+	else:
+		_attach_popup.add_item("Debug Logs (@logs)", 4)
+		
+	_attach_popup.add_separator()
 	
-	pill_script = Button.new()
-	pill_script.text = "📄 Script"
-	pill_script.toggle_mode = true
-	pill_script.tooltip_text = "Auto-attach active GDScript in the editor to prompts"
-	pill_script.add_theme_font_size_override("font_size", 11)
-	context_bar.add_child(pill_script)
+	if ic_folder:
+		_attach_popup.add_icon_item(ic_folder, "Attach Project File...", 5)
+	else:
+		_attach_popup.add_item("Attach Project File...", 5)
+		
+	_attach_popup.add_separator()
 	
-	pill_node = Button.new()
-	pill_node.text = "🎯 Node"
-	pill_node.toggle_mode = true
-	pill_node.tooltip_text = "Auto-attach selected node in inspector to prompts"
-	pill_node.add_theme_font_size_override("font_size", 11)
-	context_bar.add_child(pill_node)
+	if ic_bolt:
+		_attach_popup.add_icon_item(ic_bolt, "Actions Palette (/)", 6)
+	else:
+		_attach_popup.add_item("Actions Palette (/)", 6)
 	
-	pill_tree = Button.new()
-	pill_tree.text = "🌳 Scene"
-	pill_tree.toggle_mode = true
-	pill_tree.tooltip_text = "Auto-attach active scene tree summary to prompts"
-	pill_tree.add_theme_font_size_override("font_size", 11)
-	context_bar.add_child(pill_tree)
+	_attach_popup.id_pressed.connect(_on_attach_menu_id_pressed)
+
+
+func _on_attach_button_pressed() -> void:
+	if not is_instance_valid(_attach_popup):
+		_setup_attach_popup()
 	
-	var input_idx := input_box.get_index()
-	vbox.add_child(context_bar)
-	vbox.move_child(context_bar, input_idx)
+	_attach_popup.reset_size()
+	var btn_pos := attach_button.global_position
+	var popup_pos := Vector2i(int(btn_pos.x), int(btn_pos.y) - _attach_popup.size.y - 6)
+	_attach_popup.popup(Rect2i(popup_pos, Vector2i.ZERO))
+
+
+func _on_attach_menu_id_pressed(id: int) -> void:
+	match id:
+		0: _insert_mention("@script")
+		1: _insert_mention("@node")
+		2: _insert_mention("@tree")
+		3: _insert_mention("@docs")
+		4: _insert_mention("@logs")
+		5: _open_file_dialog()
+		6:
+			prompt_input.text = "/"
+			prompt_input.caret_column = 1
+			prompt_input.grab_focus()
+			_update_autocomplete("/")
+
+
+func _insert_mention(mention: String) -> void:
+	var cur := prompt_input.text
+	if cur.is_empty():
+		prompt_input.text = mention + " "
+	else:
+		if not cur.ends_with(" "):
+			prompt_input.text += " "
+		prompt_input.text += mention + " "
+	prompt_input.caret_column = prompt_input.text.length()
+	prompt_input.grab_focus()
+	_hide_autocomplete()
+
+
+func _open_file_dialog() -> void:
+	if not is_instance_valid(_file_dialog):
+		_file_dialog = FileDialog.new()
+		_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+		_file_dialog.access = FileDialog.ACCESS_RESOURCES
+		_file_dialog.title = "Select File to Attach"
+		_file_dialog.filters = PackedStringArray([
+			"*.gd ; GDScript",
+			"*.tscn ; Scene",
+			"*.tres ; Resource",
+			"*.json, *.cfg, *.txt, *.md ; Text Data",
+			"* ; All Files"
+		])
+		_file_dialog.file_selected.connect(_on_file_selected_to_attach)
+		add_child(_file_dialog)
+	
+	_file_dialog.popup_centered_ratio(0.65)
+
+
+func _on_file_selected_to_attach(path: String) -> void:
+	_insert_mention(path)
 
 
 func _setup_custom_instructions_ui() -> void:
@@ -1306,41 +1487,72 @@ func _restore_chat_history() -> void:
 		_append_message(sender, content)
 
 
-func _gather_prompt_context() -> String:
+func _gather_prompt_context(prompt_text: String) -> String:
 	var parts: Array[String] = []
+	var lower := prompt_text.to_lower()
 	
-	if pill_script and pill_script.button_pressed:
+	# 1. Active Script (@script)
+	if lower.contains("@script") or lower.contains("@active_script"):
 		var script: Script = Utils.get_active_script()
 		if is_instance_valid(script):
 			var path: String = script.resource_path if script.resource_path else "active_script.gd"
 			var code: String = script.source_code
-			if code.length() > 3500:
-				code = code.substr(0, 3500) + "\n# ... (truncated for brevity)"
+			if code.length() > 4000:
+				code = code.substr(0, 4000) + "\n# ... (truncated for brevity)"
 			parts.append("--- Active Script (%s) ---\n```gdscript\n%s\n```" % [path, code])
 		else:
 			parts.append("--- Active Script ---\n(No script currently open in Script Editor)")
 	
-	if pill_node and pill_node.button_pressed:
+	# 2. Selected Node (@node)
+	if lower.contains("@node") or lower.contains("@selected"):
 		var sel: EditorSelection = Utils.get_editor_selection()
 		if sel:
 			var nodes: Array[Node] = sel.get_selected_nodes()
 			if not nodes.is_empty():
 				var node_info: Array[String] = []
 				for n in nodes:
-					node_info.append("Node '%s' (%s) at '%s'" % [n.name, n.get_class(), n.get_path()])
+					var p_str := "Node '%s' (%s) at '%s'" % [n.name, n.get_class(), n.get_path()]
+					node_info.append(p_str)
 				parts.append("--- Selected Node(s) ---\n" + "\n".join(node_info))
 			else:
 				parts.append("--- Selected Node(s) ---\n(No node currently selected)")
 	
-	if pill_tree and pill_tree.button_pressed:
+	# 3. Scene Hierarchy (@tree or @scene)
+	if lower.contains("@tree") or lower.contains("@scene"):
 		var root: Node = Utils.get_editor_root()
 		if is_instance_valid(root):
 			var tree_summary: Array[String] = [root.name + " (" + root.get_class() + ")"]
 			for c in root.get_children():
 				tree_summary.append("  - " + c.name + " (" + c.get_class() + ")")
-			parts.append("--- Scene Hierarchy ---\n" + "\n".join(tree_summary.slice(0, 25)))
+			parts.append("--- Scene Hierarchy ---\n" + "\n".join(tree_summary.slice(0, 30)))
 		else:
 			parts.append("--- Scene Hierarchy ---\n(No open scene)")
+	
+	# 4. Debug Logs (@logs)
+	if lower.contains("@logs"):
+		var res := LittleHelperToolRegistry.execute_tool("get_debug_logs", {"lines": 25})
+		if res.has("logs"):
+			parts.append("--- Recent Debug Logs ---\n```\n%s\n```" % str(res["logs"]))
+	
+	# 5. Documentation Notice (@docs)
+	if lower.contains("@docs"):
+		parts.append("--- Engine Documentation Notice ---\n(User referenced engine documentation. Provide accurate Godot 4 ClassDB APIs.)")
+	
+	# 6. Attached Files (e.g. res://...)
+	var path_regex := RegEx.new()
+	if path_regex.compile("res://[^\\s,;\"'\\)]+") == OK:
+		for m in path_regex.search_all(prompt_text):
+			var file_path := m.get_string()
+			if FileAccess.file_exists(file_path):
+				var ext := file_path.get_extension().to_lower()
+				if ["gd", "tscn", "tres", "json", "cfg", "txt", "md", "csv"].has(ext):
+					var fa := FileAccess.open(file_path, FileAccess.READ)
+					if fa:
+						var content := fa.get_as_text()
+						fa.close()
+						if content.length() > 3000:
+							content = content.substr(0, 3000) + "\n# ... (truncated)"
+						parts.append("--- Attached File (%s) ---\n```\n%s\n```" % [file_path, content])
 	
 	if parts.is_empty():
 		return ""

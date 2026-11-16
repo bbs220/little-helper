@@ -87,6 +87,21 @@ Both In-Engine Chat and the External MCP Bridge run concurrently.
 
 ---
 
+## 📎 Context Mentions (`@`) & Attachments (`+`)
+
+LittleHelper features a modern Antigravity / Cursor-style prompt interface (`Ask anything, @ to mention, / for actions`):
+
+* **`+` Attach Button:** Click the `+` button beside the prompt to instantly attach the active script, selected node, scene hierarchy, debug logs, or browse project files (`.gd`, `.tscn`, `.tres`).
+* **`@` Mentions:** Type `@` anywhere in your message to trigger the context autocomplete menu:
+  - **`@script`**: Injects the active GDScript currently open in Godot's Script Editor.
+  - **`@node`**: Injects the currently selected node(s), class, and inspector properties.
+  - **`@tree`**: Injects the active scene hierarchy summary.
+  - **`@docs`**: Injects Godot 4 engine API references from ClassDB.
+  - **`@logs`**: Injects recent Godot engine debug & error logs.
+  - **`res://...`**: Directly attach any project file path in your prompt.
+
+---
+
 ## ⌨️ Slash Commands
 
 Type `/` in the prompt input to open the command autocomplete menu:
