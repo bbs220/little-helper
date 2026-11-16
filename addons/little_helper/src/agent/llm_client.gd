@@ -7,6 +7,7 @@ signal request_failed(error_message: String)
 signal status_changed(is_busy: bool, message: String)
 
 const SETTINGS_FILE_PATH := "user://little_helper_settings.cfg"
+const HISTORY_FILE_PATH := "user://little_helper_chat_history.json"
 
 var _http_request: HTTPRequest = null
 var _history: Array[Dictionary] = [] # Array of {"role": "user"|"assistant", "content": "..."}
@@ -22,10 +23,41 @@ func _ready() -> void:
 		_http_request.name = "HTTPRequest"
 		add_child(_http_request)
 		_http_request.request_completed.connect(_on_request_completed)
+	load_history()
+
+
+func get_history() -> Array[Dictionary]:
+	return _history
+
+
+func load_history() -> Array[Dictionary]:
+	if not FileAccess.file_exists(HISTORY_FILE_PATH):
+		return []
+	var fa := FileAccess.open(HISTORY_FILE_PATH, FileAccess.READ)
+	if not fa:
+		return []
+	var text := fa.get_as_text()
+	fa.close()
+	var json := JSON.new()
+	if json.parse(text) == OK and json.get_data() is Array:
+		_history.clear()
+		for item in json.get_data():
+			if item is Dictionary and item.has("role") and item.has("content"):
+				_history.append({"role": str(item["role"]), "content": str(item["content"])})
+	return _history
+
+
+func save_history() -> void:
+	var fa := FileAccess.open(HISTORY_FILE_PATH, FileAccess.WRITE)
+	if fa:
+		fa.store_string(JSON.stringify(_history, "  "))
+		fa.close()
 
 
 func clear_history() -> void:
 	_history.clear()
+	if FileAccess.file_exists(HISTORY_FILE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(HISTORY_FILE_PATH))
 
 
 func send_chat(user_prompt: String) -> void:
@@ -56,6 +88,7 @@ func send_chat(user_prompt: String) -> void:
 	# Limit history to last 10 messages
 	if _history.size() > 10:
 		_history = _history.slice(_history.size() - 10)
+	save_history()
 	
 	var sys_prompt := _build_system_prompt()
 	var headers: PackedStringArray = []
@@ -189,6 +222,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 		return
 	
 	_history.append({"role": "assistant", "content": reply_text})
+	save_history()
 	response_received.emit(reply_text)
 
 
@@ -259,7 +293,14 @@ func _build_system_prompt() -> String:
 					root.scene_file_path if root.scene_file_path else "unsaved"
 				]
 	
-	return "You are LittleHelper, an AI pair programmer embedded directly in the Godot 4 editor dock.\nEngine: Godot %s.%s\nProvide helpful, accurate, and idiomatic GDScript 2.0 advice. Format code blocks using ```gdscript." % [ver, active_scene_info]
+	var base_prompt := "You are LittleHelper, an AI pair programmer embedded directly in the Godot 4 editor dock.\nEngine: Godot %s.%s\nProvide helpful, accurate, and idiomatic GDScript 2.0 advice. Format code blocks using ```gdscript." % [ver, active_scene_info]
+	
+	var settings := _load_settings()
+	var custom_inst: String = str(settings.get("custom_instructions", "")).strip_edges()
+	if not custom_inst.is_empty():
+		base_prompt += "\n\nUser Custom Instructions / Persona:\n" + custom_inst
+	
+	return base_prompt
 
 
 func _get_provider_name(provider: int) -> String:
@@ -281,13 +322,15 @@ func _load_settings() -> Dictionary:
 			"model": str(cfg.get_value("llm", "model", "gpt-4o")),
 			"api_key": str(cfg.get_value("llm", "api_key", "")),
 			"endpoint": str(cfg.get_value("llm", "endpoint", "")),
-			"temperature": float(cfg.get_value("llm", "temperature", 0.7))
+			"temperature": float(cfg.get_value("llm", "temperature", 0.7)),
+			"custom_instructions": str(cfg.get_value("llm", "custom_instructions", ""))
 		}
 	return {
 		"provider": 0,
 		"model": "gpt-4o",
 		"api_key": "",
 		"endpoint": "https://api.openai.com/v1/chat/completions",
-		"temperature": 0.7
+		"temperature": 0.7,
+		"custom_instructions": ""
 	}
 

@@ -73,6 +73,31 @@ static func sanitize_variant(val):
 	return val
 
 
+static func get_active_script() -> Script:
+	if Engine.is_editor_hint() and EditorInterface != null:
+		var se := EditorInterface.get_script_editor()
+		if se != null and se.has_method("get_current_script"):
+			return se.get_current_script()
+	return null
+
+
+static func get_active_script_path() -> String:
+	var script := get_active_script()
+	if is_instance_valid(script) and not script.resource_path.is_empty():
+		return script.resource_path
+	return ""
+
+
+static func open_script_in_editor(path: String) -> bool:
+	if Engine.is_editor_hint() and EditorInterface != null:
+		if ResourceLoader.exists(path):
+			var res = load(path)
+			if res is Script:
+				EditorInterface.edit_script(res)
+				return true
+	return false
+
+
 static func parse_prop_val(existing_val, input_val):
 	if existing_val is Vector2 and input_val is Array and input_val.size() >= 2:
 		return Vector2(float(input_val[0]), float(input_val[1]))
@@ -88,5 +113,15 @@ static func parse_prop_val(existing_val, input_val):
 		return int(input_val)
 	elif existing_val is float:
 		return float(input_val)
+	elif existing_val == null:
+		if input_val is Array:
+			if input_val.size() == 2:
+				return Vector2(float(input_val[0]), float(input_val[1]))
+			elif input_val.size() == 3:
+				return Vector3(float(input_val[0]), float(input_val[1]), float(input_val[2]))
+			elif input_val.size() == 4:
+				return Vector4(float(input_val[0]), float(input_val[1]), float(input_val[2]), float(input_val[3]))
+		elif input_val is String and (input_val.begins_with("#") or input_val.begins_with("Color(")):
+			return Color.from_string(input_val, Color.WHITE)
 	return input_val
 
