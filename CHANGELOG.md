@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-11-16
 
 ### 🚀 Highlights
-- **Antigravity-Style Prompt & Context System**: Streamlined prompt bar with intelligent `@` mentions (`@script`, `@node`, `@tree`, `@docs`, `@logs`) and a `+` attach menu for files, scenes, and actions.
+- **Modern Prompt & Context System**: Streamlined prompt bar with intelligent `@` mentions (`@script`, `@node`, `@tree`, `@docs`, `@logs`) and a `+` attach menu for files, scenes, and actions.
 - **Custom Line Iconography**: Completely replaced all emojis across the dock with clean, professional white-stroke line SVGs from SVG Repo.
 - **Expanded Tool Suite (24 Tools)**: Added `write_script`, `patch_script`, `get_documentation`, and `create_resource` for full script lifecycle and resource instantiation with Undo/Redo.
 - **Interactive Code Actions**: Generated code blocks now feature one-click `[Copy]`, `[Apply to Script]`, and `[Save as File]` buttons directly in the chat stream.
@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Vector Iconography**: Added clean white-stroke line SVGs (`plus.svg`, `script.svg`, `node.svg`, `tree.svg`, `book.svg`, `terminal.svg`, `folder.svg`, `bolt.svg`, `copy.svg`).
 
 ### 🔧 Changed
-- Replaced ambiguous toggle pill buttons with the modern Antigravity / Cursor prompt bar (`Ask anything, @ to mention, / for actions`).
+- Replaced ambiguous toggle pill buttons with a clean, modern prompt bar (`Ask anything, @ to mention, / for actions`).
 - Enhanced autocomplete navigation: <kbd>↑</kbd> / <kbd>↓</kbd> to navigate, <kbd>Tab</kbd> or <kbd>Enter</kbd> to apply token.
 - Sanitized Google Gemini model requests to strip accidental `models/` prefixes and updated default model to `gemini-flash-lite-latest`.
 - Updated release packaging workflow to attach POSIX `.zip` archives directly via `softprops/action-gh-release@v3` (Node 24).

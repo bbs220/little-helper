@@ -89,7 +89,7 @@ Both In-Engine Chat and the External MCP Bridge run concurrently.
 
 ## 📎 Context Mentions (`@`) & Attachments (`+`)
 
-LittleHelper features a modern Antigravity / Cursor-style prompt interface (`Ask anything, @ to mention, / for actions`):
+LittleHelper features a modern, intuitive copilot prompt interface (`Ask anything, @ to mention, / for actions`):
 
 * **`+` Attach Button:** Click the `+` button beside the prompt to instantly attach the active script, selected node, scene hierarchy, debug logs, or browse project files (`.gd`, `.tscn`, `.tres`).
 * **`@` Mentions:** Type `@` anywhere in your message to trigger the context autocomplete menu:
