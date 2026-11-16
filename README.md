@@ -55,7 +55,7 @@ Chat directly with an AI assistant inside the dock.
 - **Supported Providers:**
   - **OpenAI:** `gpt-4o`, `gpt-4o-mini`, etc.
   - **Anthropic Claude:** `claude-3-5-sonnet-20241022`, etc.
-  - **Google Gemini:** `gemini-1.5-flash`, `gemini-1.5-pro`, etc.
+  - **Google Gemini:** `gemini-flash-lite-latest`, `gemini-3.1-flash-lite`, `gemini-3-flash-preview`, etc.
   - **DeepSeek:** `deepseek-chat`, `deepseek-coder`
   - **Ollama (Local Offline):** `llama3`, `mistral`, `qwen2.5-coder`, etc.
   - **Custom Endpoint:** Any OpenAI-compatible server (LM Studio, LocalAI, vLLM, OpenRouter).

@@ -309,10 +309,10 @@ func _on_provider_selected(index: int, update_defaults: bool = true) -> void:
 			api_key_input.placeholder_text = "sk-ant-..."
 		2: # Gemini
 			if update_defaults:
-				model_input.text = "gemini-1.5-pro"
+				model_input.text = "gemini-flash-lite-latest"
 				endpoint_input.text = "https://generativelanguage.googleapis.com/v1beta/models/"
 			api_key_input.editable = true
-			api_key_input.placeholder_text = "AIzaSy..."
+			api_key_input.placeholder_text = "AIzaSy... / AQ...."
 		3: # DeepSeek
 			if update_defaults:
 				model_input.text = "deepseek-chat"

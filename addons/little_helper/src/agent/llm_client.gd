@@ -134,8 +134,11 @@ func send_chat(user_prompt: String) -> void:
 		
 		2: # Google Gemini
 			headers.append("Content-Type: application/json")
+			var clean_model := model.trim_prefix("models/").strip_edges()
+			if clean_model.is_empty():
+				clean_model = "gemini-flash-lite-latest"
 			if url.is_empty() or not url.contains(":generateContent"):
-				url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s" % [model, api_key]
+				url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s" % [clean_model, api_key]
 			elif not url.contains("key="):
 				url += ("&key=" if url.contains("?") else "?key=") + api_key
 			

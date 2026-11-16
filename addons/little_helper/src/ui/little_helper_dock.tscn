@@ -296,7 +296,7 @@ metadata/_edit_lock_ = true
 
 [node name="ModelInput" type="LineEdit" parent="SettingsOverlay/SettingsPanel/SettingsLayout/SettingsScroll/FormLayout/DirectAiSection" unique_id=-235280162]
 layout_mode = 2
-text = "gemini-1.5-pro"
+text = "gemini-flash-lite-latest"
 placeholder_text = "e.g. gpt-4o, claude-3-5-sonnet"
 metadata/_edit_lock_ = true
 
