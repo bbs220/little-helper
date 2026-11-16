@@ -16,8 +16,8 @@
 ## ✨ Features
 
 - **🎮 24 Native Engine Tools:** Live scene inspection, node creation/removal, scene instantiation, reparenting, property editing, resource creation, script writing/patching, signal wiring, project settings, ClassDB reflection, GDScript evaluation, scene management, project execution, and debug log tailing.
-- **📄 Direct Script Writing & Patching:** Write full `.gd` scripts to disk or patch targeted functions with one-click **[Apply to Active Script]** directly from chat code blocks.
-- **🎯 Smart Context Pills:** Clickable toggles (`[📄 Script]`, `[🎯 Node]`, `[🌳 Scene]`) to automatically include your active GDScript, selected node properties, or scene tree in AI prompts.
+- **📄 Direct Script Writing & Patching:** Write full `.gd` scripts to disk or patch targeted functions with one-click **[Apply to Script]** directly from chat code blocks.
+- **📎 Context Mentions (@) & Attachments (+):** Reference your active script (`@script`), selected node (`@node`), scene hierarchy (`@tree`), API docs (`@docs`), or debug logs (`@logs`) directly in prompts, or attach any project asset via the `+` menu.
 - **↩️ Full Undo / Redo:** Scene and resource modifications (`add_node`, `remove_node`, `instantiate_scene`, `reparent_node`, `set_node_property`, `create_resource`, `attach_script`, `connect_signal`) integrate with Godot's `EditorUndoRedoManager` (`Ctrl+Z` / `Ctrl+Y`).
 - **📚 In-Engine API Docs:** Look up real Godot 4 class methods, property signatures, and signals using the `/doc` command and `get_documentation` tool to eliminate hallucinated syntax.
 - **⚙️ Custom Instructions / Persona:** Set custom developer rules in Settings (e.g. static typing, specific architecture, 2D/3D project conventions).
