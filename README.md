@@ -4,6 +4,11 @@
   <img src="addons/little_helper/icon.svg" width="96" height="96" alt="LittleHelper Icon" />
   <br>
   <strong>In-Engine AI Copilot & Model Context Protocol (MCP) Bridge for Godot 4</strong>
+  <br><br>
+  <a href="https://github.com/bbs220/little-helper/actions/workflows/release.yml"><img src="https://github.com/bbs220/little-helper/actions/workflows/release.yml/badge.svg" alt="Package & Release Addon ZIP" /></a>
+  <a href="https://github.com/bbs220/little-helper/releases/latest"><img src="https://img.shields.io/github/v/release/bbs220/little-helper?color=478cbf&label=Release" alt="Release" /></a>
+  <br><br>
+  <a href="https://github.com/bbs220/little-helper/releases"><strong>📦 Download Latest Release (.zip)</strong></a>
 </p>
 
 **LittleHelper** is a lightweight, zero-dependency Godot 4 editor plugin that bridges the gap between your game engine and modern AI models. It works in two flexible modes:
@@ -39,10 +44,11 @@
 ## 🚀 Quick Start
 
 ### 1. Installation
-1. Copy or clone the `addons/little_helper` folder into your Godot project's `addons/` directory.
-2. In the Godot editor, open **Project → Project Settings → Plugins**.
-3. Enable the **LittleHelper** plugin.
-4. The LittleHelper dock will appear in your editor docks (usually beside the Inspector or FileSystem).
+1. Download `little_helper.zip` from the [GitHub Releases](https://github.com/bbs220/little-helper/releases) page (or clone the repository).
+2. Extract the `addons/little_helper` folder into your Godot project's `addons/` directory.
+3. In the Godot editor, open **Project → Project Settings → Plugins**.
+4. Enable the **LittleHelper** plugin.
+5. The LittleHelper dock will appear in your editor docks (usually beside the Inspector or FileSystem).
 
 ---
 
