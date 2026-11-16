@@ -8,7 +8,7 @@
   <a href="https://github.com/bbs220/little-helper/actions/workflows/release.yml"><img src="https://github.com/bbs220/little-helper/actions/workflows/release.yml/badge.svg" alt="Package & Release Addon ZIP" /></a>
   <a href="https://github.com/bbs220/little-helper/releases/latest"><img src="https://img.shields.io/github/v/release/bbs220/little-helper?color=478cbf&label=Release" alt="Release" /></a>
   <br><br>
-  <a href="https://github.com/bbs220/little-helper/releases"><strong>📦 Download Latest Release (.zip)</strong></a>
+  <a href="https://github.com/bbs220/little-helper/releases"><strong>📦 Download Latest Release</strong></a>
 </p>
 
 **LittleHelper** is a lightweight, zero-dependency Godot 4 editor plugin that bridges the gap between your game engine and modern AI models. It works in two flexible modes:
@@ -44,6 +44,7 @@
 ## 🚀 Quick Start
 
 ### 1. Installation
+
 1. Download `little_helper.zip` from the [GitHub Releases](https://github.com/bbs220/little-helper/releases) page (or clone the repository).
 2. Extract the `addons/little_helper` folder into your Godot project's `addons/` directory.
 3. In the Godot editor, open **Project → Project Settings → Plugins**.
@@ -57,7 +58,9 @@
 Open the **Settings drawer** (gear icon in the top header) to choose your operating mode:
 
 ### Mode 1: In-Engine Chat
+
 Chat directly with an AI assistant inside the dock.
+
 - **Supported Providers:**
   - **OpenAI:** `gpt-4o`, `gpt-4o-mini`, etc.
   - **Anthropic Claude:** `claude-3-5-sonnet-20241022`, etc.
@@ -67,6 +70,7 @@ Chat directly with an AI assistant inside the dock.
   - **Custom Endpoint:** Any OpenAI-compatible server (LM Studio, LocalAI, vLLM, OpenRouter).
 
 ### Mode 2: External Agent (MCP Bridge)
+
 Turn your Godot editor into an MCP server. External AI coding assistants can inspect and modify your project live while you work.
 
 Add the following to your agent's MCP configuration (`mcp_config.json` or `claude_desktop_config.json`):
@@ -76,9 +80,7 @@ Add the following to your agent's MCP configuration (`mcp_config.json` or `claud
   "mcpServers": {
     "godot-little-helper": {
       "command": "node",
-      "args": [
-        "addons/little_helper/bridge/mcp_bridge.js"
-      ],
+      "args": ["addons/little_helper/bridge/mcp_bridge.js"],
       "env": {
         "GODOT_PORT": "9099"
       }
@@ -86,9 +88,11 @@ Add the following to your agent's MCP configuration (`mcp_config.json` or `claud
   }
 }
 ```
-*(Tip: You can click the **"Copy MCP Config"** button inside the LittleHelper settings drawer to copy your project's exact absolute path snippet).*
+
+_(Tip: You can click the **"Copy MCP Config"** button inside the LittleHelper settings drawer to copy your project's exact absolute path snippet)._
 
 ### Mode 3: Dual Mode
+
 Both In-Engine Chat and the External MCP Bridge run concurrently.
 
 ---
@@ -97,8 +101,8 @@ Both In-Engine Chat and the External MCP Bridge run concurrently.
 
 LittleHelper features a modern, intuitive copilot prompt interface (`Ask anything, @ to mention, / for actions`):
 
-* **`+` Attach Button:** Click the `+` button beside the prompt to instantly attach the active script, selected node, scene hierarchy, debug logs, or browse project files (`.gd`, `.tscn`, `.tres`).
-* **`@` Mentions:** Type `@` anywhere in your message to trigger the context autocomplete menu:
+- **`+` Attach Button:** Click the `+` button beside the prompt to instantly attach the active script, selected node, scene hierarchy, debug logs, or browse project files (`.gd`, `.tscn`, `.tres`).
+- **`@` Mentions:** Type `@` anywhere in your message to trigger the context autocomplete menu:
   - **`@script`**: Injects the active GDScript currently open in Godot's Script Editor.
   - **`@node`**: Injects the currently selected node(s), class, and inspector properties.
   - **`@tree`**: Injects the active scene hierarchy summary.
@@ -112,25 +116,25 @@ LittleHelper features a modern, intuitive copilot prompt interface (`Ask anythin
 
 Type `/` in the prompt input to open the command autocomplete menu:
 
-| Command | Usage | Description |
-| :--- | :--- | :--- |
-| `/help` | `/help` | Show all commands and dock status |
-| `/selected` | `/selected` | Inspect currently selected node(s) |
-| `/select` | `/select <node_path>` | Select and focus a node in the scene tree & inspector |
-| `/tree` | `/tree` | View full scene hierarchy |
-| `/inspect` | `/inspect <node_path>` | Inspect node properties, transform, and script |
-| `/tools` | `/tools` | List all 24 registered engine & MCP tools |
-| `/doc` | `/doc <class>[.<symbol>]` | Fetch Godot 4 class/method API documentation |
-| `/script` | `/script` | Inspect currently active GDScript in script editor |
-| `/save` | `/save [all]` | Save the active scene (or `/save all` for all open scenes) |
-| `/open` | `/open <scene_path>` | Open a scene (`.tscn`) in the editor tab |
-| `/remove` | `/remove <node_path>` | Remove a node from scene with Undo/Redo |
-| `/run` | `/run [scene_path]` | Run main project scene (or custom scene path) in debug mode |
-| `/stop` | `/stop` | Stop the running debug instance |
-| `/logs` | `/logs [lines]` | Tail recent engine output and error logs (`godot.log`) |
-| `/setting` | `/setting <name_or_prefix> [value]` | Get, set, or search ProjectSettings (`project.godot`) |
-| `/eval` | `/eval <code>` | Evaluate a GDScript expression or code block |
-| `/clear` | `/clear` | Clear conversation history |
+| Command     | Usage                               | Description                                                 |
+| :---------- | :---------------------------------- | :---------------------------------------------------------- |
+| `/help`     | `/help`                             | Show all commands and dock status                           |
+| `/selected` | `/selected`                         | Inspect currently selected node(s)                          |
+| `/select`   | `/select <node_path>`               | Select and focus a node in the scene tree & inspector       |
+| `/tree`     | `/tree`                             | View full scene hierarchy                                   |
+| `/inspect`  | `/inspect <node_path>`              | Inspect node properties, transform, and script              |
+| `/tools`    | `/tools`                            | List all 24 registered engine & MCP tools                   |
+| `/doc`      | `/doc <class>[.<symbol>]`           | Fetch Godot 4 class/method API documentation                |
+| `/script`   | `/script`                           | Inspect currently active GDScript in script editor          |
+| `/save`     | `/save [all]`                       | Save the active scene (or `/save all` for all open scenes)  |
+| `/open`     | `/open <scene_path>`                | Open a scene (`.tscn`) in the editor tab                    |
+| `/remove`   | `/remove <node_path>`               | Remove a node from scene with Undo/Redo                     |
+| `/run`      | `/run [scene_path]`                 | Run main project scene (or custom scene path) in debug mode |
+| `/stop`     | `/stop`                             | Stop the running debug instance                             |
+| `/logs`     | `/logs [lines]`                     | Tail recent engine output and error logs (`godot.log`)      |
+| `/setting`  | `/setting <name_or_prefix> [value]` | Get, set, or search ProjectSettings (`project.godot`)       |
+| `/eval`     | `/eval <code>`                      | Evaluate a GDScript expression or code block                |
+| `/clear`    | `/clear`                            | Clear conversation history                                  |
 
 ---
 
@@ -139,6 +143,7 @@ Type `/` in the prompt input to open the command autocomplete menu:
 When connected via MCP, external agents have access to 24 real-time tools:
 
 ### Scene & Node Hierarchy
+
 1. `get_selected_nodes`: Get currently selected editor nodes.
 2. `get_scene_tree`: Traverse full node hierarchy with configurable `max_depth`.
 3. `inspect_node`: Detailed node metadata, export properties, scripts, and configuration warnings.
@@ -153,6 +158,7 @@ When connected via MCP, external agents have access to 24 real-time tools:
 12. `attach_script`: Assign a GDScript file to a node with Undo/Redo.
 
 ### Scene & Project Lifecycle
+
 13. `save_scene`: Save active scene or all modified scenes to disk.
 14. `open_scene`: Open and switch active editor scene from path.
 15. `run_project`: Launch debug instance of main scene or specified `.tscn`.
@@ -161,6 +167,7 @@ When connected via MCP, external agents have access to 24 real-time tools:
 18. `project_setting`: Get, set, or search project settings in `project.godot`.
 
 ### Reflection & Code Execution
+
 19. `get_class_info`: Query Godot's built-in `ClassDB` for methods, properties, and signals.
 20. `get_documentation`: Inspect full Godot 4 API documentation with exact method signatures and property types.
 21. `read_script`: Read source code of any GDScript with optional line ranges.
@@ -204,4 +211,3 @@ addons/little_helper/
 ## 📄 License
 
 MIT License. Free to use, modify, and distribute in any personal or commercial Godot project.
-
