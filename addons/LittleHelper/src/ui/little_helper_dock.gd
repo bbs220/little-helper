@@ -61,6 +61,7 @@ const SETTINGS_FILE_PATH := "user://little_helper_settings.cfg"
 const INITIAL_GREETING := "Hi! Ask me anything, use [color=#66ccff][b]@[/b][/color] to attach editor context (@script, @node, @tree), or [color=#eebb44][b]/[/b][/color] for actions.\nClick [b]+[/b] to attach files or resources."
 const LLMClient = preload("res://addons/LittleHelper/src/agent/llm_client.gd")
 const Utils = preload("res://addons/LittleHelper/src/tools/tool_utils.gd")
+const ToolRegistry = preload("res://addons/LittleHelper/src/core/tool_registry.gd")
 
 const CONTEXT_MENTIONS: Array[Dictionary] = [
 	{
@@ -1053,7 +1054,7 @@ func _on_prompt_submitted(text: String) -> void:
 		return
 	
 	if clean_text == "/tools":
-		var defs := LittleHelperToolRegistry.get_tool_definitions()
+		var defs := ToolRegistry.get_tool_definitions()
 		var lines := ["[b]Available Tools (%d):[/b]" % defs.size()]
 		for d in defs:
 			lines.append("• [b]%s[/b]: %s" % [d["name"], d["description"]])
@@ -1061,13 +1062,13 @@ func _on_prompt_submitted(text: String) -> void:
 		return
 	
 	if clean_text == "/selected":
-		var res := LittleHelperToolRegistry.execute_tool("get_selected_nodes", {})
+		var res := ToolRegistry.execute_tool("get_selected_nodes", {})
 		_append_message("LittleHelper", "[code]%s[/code]" % JSON.stringify(res, "\t"))
 		return
 	
 	if clean_text == "/select" or clean_text.begins_with("/select "):
 		var arg := clean_text.substr(7).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("select_node", {"node_path": arg})
+		var res := ToolRegistry.execute_tool("select_node", {"node_path": arg})
 		if res.has("success"):
 			_append_message("LittleHelper", "[color=#66ff99]Selected node:[/color] [b]%s[/b] (%s) at [code]%s[/code]" % [res["selected_node"], res["type"], res["path"]])
 		else:
@@ -1075,19 +1076,19 @@ func _on_prompt_submitted(text: String) -> void:
 		return
 	
 	if clean_text == "/tree":
-		var res := LittleHelperToolRegistry.execute_tool("get_scene_tree", {})
+		var res := ToolRegistry.execute_tool("get_scene_tree", {})
 		_append_message("LittleHelper", "[code]%s[/code]" % JSON.stringify(res, "\t"))
 		return
 	
 	if clean_text == "/inspect" or clean_text.begins_with("/inspect "):
 		var path := clean_text.substr(8).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("inspect_node", {"node_path": path})
+		var res := ToolRegistry.execute_tool("inspect_node", {"node_path": path})
 		_append_message("LittleHelper", "[code]%s[/code]" % JSON.stringify(res, "\t"))
 		return
 	
 	if clean_text == "/save" or clean_text.begins_with("/save "):
 		var arg := clean_text.substr(5).strip_edges().to_lower()
-		var res := LittleHelperToolRegistry.execute_tool("save_scene", {"all": arg == "all"})
+		var res := ToolRegistry.execute_tool("save_scene", {"all": arg == "all"})
 		var msg: String = str(res.get("message", res.get("error", "Done")))
 		var color := "#66ff99" if res.has("success") else "#ff7777"
 		_append_message("LittleHelper", "[color=%s]%s[/color]" % [color, msg])
@@ -1095,14 +1096,14 @@ func _on_prompt_submitted(text: String) -> void:
 	
 	if clean_text == "/run" or clean_text.begins_with("/run "):
 		var custom_path := clean_text.substr(4).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("run_project", {"scene_path": custom_path})
+		var res := ToolRegistry.execute_tool("run_project", {"scene_path": custom_path})
 		var msg: String = str(res.get("message", res.get("error", "Done")))
 		var color := "#66ff99" if res.has("success") else "#ff7777"
 		_append_message("LittleHelper", "[color=%s]%s[/color]" % [color, msg])
 		return
 	
 	if clean_text == "/stop":
-		var res := LittleHelperToolRegistry.execute_tool("stop_project", {})
+		var res := ToolRegistry.execute_tool("stop_project", {})
 		var msg: String = str(res.get("message", res.get("error", "Done")))
 		_append_message("LittleHelper", msg)
 		return
@@ -1110,7 +1111,7 @@ func _on_prompt_submitted(text: String) -> void:
 	if clean_text == "/logs" or clean_text.begins_with("/logs "):
 		var arg := clean_text.substr(5).strip_edges()
 		var lines_cnt := int(arg) if arg.is_valid_int() else 35
-		var res := LittleHelperToolRegistry.execute_tool("get_debug_logs", {"max_lines": lines_cnt})
+		var res := ToolRegistry.execute_tool("get_debug_logs", {"max_lines": lines_cnt})
 		if res.has("logs"):
 			_append_message("LittleHelper", "[b]Debug Logs (%s):[/b]\n[code]%s[/code]" % [res.get("log_file", "godot.log"), res["logs"]])
 		else:
@@ -1119,7 +1120,7 @@ func _on_prompt_submitted(text: String) -> void:
 	
 	if clean_text == "/open" or clean_text.begins_with("/open "):
 		var path := clean_text.substr(5).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("open_scene", {"scene_path": path})
+		var res := ToolRegistry.execute_tool("open_scene", {"scene_path": path})
 		if res.has("success"):
 			_append_message("LittleHelper", "[color=#66ff99]Opened scene:[/color] [code]%s[/code]" % res["opened_scene"])
 		else:
@@ -1128,7 +1129,7 @@ func _on_prompt_submitted(text: String) -> void:
 	
 	if clean_text == "/remove" or clean_text.begins_with("/remove "):
 		var path := clean_text.substr(7).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("remove_node", {"node_path": path})
+		var res := ToolRegistry.execute_tool("remove_node", {"node_path": path})
 		if res.has("success"):
 			_append_message("LittleHelper", "[color=#66ff99]Removed node:[/color] [b]%s[/b] from [code]%s[/code] (Ctrl+Z to undo)" % [res["removed_node"], res["parent"]])
 		else:
@@ -1143,13 +1144,13 @@ func _on_prompt_submitted(text: String) -> void:
 		var dict := {"setting": key}
 		if val != null:
 			dict["value"] = val
-		var res := LittleHelperToolRegistry.execute_tool("project_setting", dict)
+		var res := ToolRegistry.execute_tool("project_setting", dict)
 		_append_message("LittleHelper", "[code]%s[/code]" % JSON.stringify(res, "\t"))
 		return
 	
 	if clean_text == "/eval" or clean_text.begins_with("/eval "):
 		var code := clean_text.substr(5).strip_edges()
-		var res := LittleHelperToolRegistry.execute_tool("execute_code", {"code": code})
+		var res := ToolRegistry.execute_tool("execute_code", {"code": code})
 		if res.has("success"):
 			var result_str: String = JSON.stringify(res["result"], "\t") if (res["result"] is Dictionary or res["result"] is Array) else str(res["result"])
 			_append_message("LittleHelper", "[color=#66ff99]Result (%s):[/color] [code]%s[/code]" % [res.get("mode", "ok"), result_str])
@@ -1165,7 +1166,7 @@ func _on_prompt_submitted(text: String) -> void:
 		var parts := arg.split(".", false, 1)
 		var c_name := parts[0]
 		var sym := parts[1] if parts.size() > 1 else ""
-		var res := LittleHelperToolRegistry.execute_tool("get_documentation", {
+		var res := ToolRegistry.execute_tool("get_documentation", {
 			"class_name": c_name,
 			"symbol": sym
 		})

@@ -2,9 +2,10 @@
 extends EditorPlugin
 
 const DOCK_SCENE_PATH := "res://addons/LittleHelper/src/ui/little_helper_dock.tscn"
+const BridgeServer = preload("res://addons/LittleHelper/src/core/bridge_server.gd")
 
 var dock_instance: Control = null
-var bridge_server_instance: LittleHelperBridgeServer = null
+var bridge_server_instance: Node = null
 
 func _enable_plugin() -> void:
 	_mount_dock()
@@ -108,7 +109,7 @@ func _start_bridge_server() -> void:
 			bridge_server_instance.start_server(port)
 		return
 	
-	bridge_server_instance = LittleHelperBridgeServer.new()
+	bridge_server_instance = BridgeServer.new()
 	bridge_server_instance.name = "LittleHelperBridgeServer"
 	add_child(bridge_server_instance)
 	bridge_server_instance.start_server(port)

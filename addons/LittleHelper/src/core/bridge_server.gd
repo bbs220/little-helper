@@ -10,6 +10,7 @@ signal client_disconnected(client_id: int)
 
 const DEFAULT_PORT := 9099
 const MAX_PORT_ATTEMPTS := 10
+const ToolRegistry = preload("res://addons/LittleHelper/src/core/tool_registry.gd")
 
 static var instance: LittleHelperBridgeServer = null
 
@@ -134,7 +135,7 @@ func _handle_client_message(client: Dictionary, raw_message: String) -> void:
 	if method.is_empty() and msg.has("tool"):
 		var tool_name: String = msg.get("tool", "")
 		var tool_args: Dictionary = msg.get("args", {})
-		var result := LittleHelperToolRegistry.execute_tool(tool_name, tool_args)
+		var result := ToolRegistry.execute_tool(tool_name, tool_args)
 		_send_response(client, {
 			"id": req_id,
 			"result": result
@@ -143,7 +144,7 @@ func _handle_client_message(client: Dictionary, raw_message: String) -> void:
 	
 	match method:
 		"tools/list":
-			var defs := LittleHelperToolRegistry.get_tool_definitions()
+			var defs := ToolRegistry.get_tool_definitions()
 			_send_response(client, {
 				"jsonrpc": "2.0",
 				"id": req_id,
@@ -156,7 +157,7 @@ func _handle_client_message(client: Dictionary, raw_message: String) -> void:
 			var params: Dictionary = msg.get("params", {})
 			var name: String = params.get("name", "")
 			var arguments: Dictionary = params.get("arguments", {})
-			var tool_result := LittleHelperToolRegistry.execute_tool(name, arguments)
+			var tool_result := ToolRegistry.execute_tool(name, arguments)
 			
 			_send_response(client, {
 				"jsonrpc": "2.0",
