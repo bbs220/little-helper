@@ -25,13 +25,13 @@ jobs:
 
       - name: Build POSIX-compliant ZIP
         run: |
-          zip -r little_helper.zip addons/
+          zip -r LittleHelper.zip addons/ -x "*.DS_Store" "*Thumbs.db"
           echo "Package contents preview:"
-          unzip -l little_helper.zip | head -n 20
+          unzip -l LittleHelper.zip | head -n 20
 
       - name: Upload ZIP to GitHub Release
         if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag_name != ''
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          files: little_helper.zip
+          files: LittleHelper.zip

@@ -44,7 +44,7 @@
 ## 🚀 Quick Start
 
 ### 1. Installation
-1. Download `little_helper.zip` from the [GitHub Releases](https://github.com/bbs220/little-helper/releases) page (or clone the repository).
+1. Download `LittleHelper.zip` from the [GitHub Releases](https://github.com/bbs220/little-helper/releases) page (or clone the repository).
 2. Extract the `addons/LittleHelper` folder into your Godot project's `addons/` directory.
 3. In the Godot editor, open **Project → Project Settings → Plugins**.
 4. Enable the **LittleHelper** plugin.
