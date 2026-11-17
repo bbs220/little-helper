@@ -1517,6 +1517,7 @@ func _setup_updates_ui() -> void:
 	
 	_update_status_label = Label.new()
 	_update_status_label.text = ""
+	_update_status_label.custom_minimum_size = Vector2(100, 0)
 	_update_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	update_section.add_child(_update_status_label)
 	

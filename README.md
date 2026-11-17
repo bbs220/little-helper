@@ -201,6 +201,8 @@ addons/LittleHelper/
 ├── icon.svg                    # Mascot avatar & editor icon
 ├── LICENSE.txt                 # MIT License
 ├── README.md                   # Plugin documentation
+├── demo/
+│   └── demo.tscn               # Standalone test/welcome scene (F5)
 ├── bridge/
 │   └── mcp_bridge.js           # Lightweight Node.js stdio MCP bridge
 ├── src/

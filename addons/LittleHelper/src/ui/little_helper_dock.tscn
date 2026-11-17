@@ -373,6 +373,7 @@ text = "Connect External Agent:"
 metadata/_edit_lock_ = true
 
 [node name="McpGuideDesc" type="Label" parent="SettingsOverlay/SettingsPanel/SettingsLayout/SettingsScroll/FormLayout/McpSection" unique_id=987123467]
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "Allows Antigravity, Claude Desktop, or Cursor to inspect & edit your Godot scene live via MCP."
 autowrap_mode = 3
