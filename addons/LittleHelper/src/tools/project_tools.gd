@@ -1,5 +1,4 @@
 @tool
-class_name LittleHelperProjectTools
 extends RefCounted
 
 ## Scene saving/opening, project execution, debug logging, and ProjectSettings tools.

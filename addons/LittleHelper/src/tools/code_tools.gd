@@ -1,5 +1,4 @@
 @tool
-class_name LittleHelperCodeTools
 extends RefCounted
 
 ## ClassDB query, GDScript reading, and in-editor dynamic execution tools.

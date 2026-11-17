@@ -1,5 +1,4 @@
 @tool
-class_name LittleHelperNodeTools
 extends RefCounted
 
 ## Node creation, modification, reparenting, and removal tools backed by Undo/Redo.

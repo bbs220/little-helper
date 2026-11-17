@@ -1,5 +1,4 @@
 @tool
-class_name LittleHelperSceneTools
 extends RefCounted
 
 ## Scene and node inspection tools for LittleHelper.

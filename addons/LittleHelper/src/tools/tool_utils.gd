@@ -1,5 +1,4 @@
 @tool
-class_name LittleHelperToolUtils
 extends RefCounted
 
 ## Shared utility methods for LittleHelper tools.
