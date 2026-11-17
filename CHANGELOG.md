@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-17
+
+### 🚀 Highlights
+- **In-Engine 1-Click Updater**: Check for updates and download/extract the latest release directly inside the dock Settings drawer via Godot 4's native `ZIPReader`.
+- **PascalCase Addon Restructure**: Renamed addon root directory to `addons/LittleHelper/` following Godot's standard addon naming convention.
+- **Defensive Startup Diagnosis**: Automatic guard detecting legacy lowercase `addons/little_helper/` folders to alert users and prevent duplicate class conflicts.
+- **Hybrid Clean Namespacing**: Internal tool modules now use preload-only architecture to prevent polluting the user's "Create New Node" dialog, while core APIs retain clean `LittleHelper*` prefixes.
+- **Editor Command Palette Integration**: Registered Godot Command Palette shortcuts (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) to quickly focus the dock, open settings, or check for updates.
+- **Default Demo Scene**: Added a lightweight `demo.tscn` so launching the project with <kbd>F5</kbd> runs cleanly without missing scene errors.
+
+---
+
+### ✨ Added
+- **Plugin Updates Drawer**: Added a dedicated update checker in the dock Settings panel that queries GitHub Releases and performs in-engine replacement of plugin files.
+- **Godot Command Palette Actions**:
+  - `LittleHelper: Focus Dock`: Immediately focuses the dock prompt input.
+  - `LittleHelper: Open Settings`: Opens the settings overlay panel.
+  - `LittleHelper: Check for Updates`: Triggers GitHub release verification.
+- **Legacy Folder Warning Guard**: Detects leftover `addons/little_helper/` directories on startup and pops up an advisory dialog.
+- **Default Main Scene**: Created `demo.tscn` and registered `run/main_scene="res://demo.tscn"` in `project.godot`.
+
+### 🔧 Changed
+- **Folder Casing**: Standardized root addon folder to `addons/LittleHelper/` and release archive to `LittleHelper.zip`.
+- **Namespace Cleanliness**: Removed global `class_name` definitions from internal scripts (`scene_tools.gd`, `node_tools.gd`, `project_tools.gd`, `code_tools.gd`, `tool_utils.gd`) to keep the user's project namespace 100% clean.
+- **Settings Typography**: Removed hardcoded small font overrides in settings drawer so custom instructions and updater elements scale naturally with Godot's editor theme and HiDPI displays.
+- **Release Packaging**: Added exclusions (`-x "*.DS_Store" "*Thumbs.db"`) in `.github/workflows/release.yml`.
+
+---
+
 ## [1.1.0] - 2026-11-16
 
 ### 🚀 Highlights

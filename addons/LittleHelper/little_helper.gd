@@ -21,6 +21,7 @@ func _enter_tree() -> void:
 		_unmount_dock()
 	_mount_dock()
 	_start_bridge_server()
+	_register_command_palette()
 
 func _check_legacy_folder() -> void:
 	if DirAccess.dir_exists_absolute("res://addons/little_helper"):
@@ -45,6 +46,7 @@ func _show_legacy_folder_dialog() -> void:
 		dialog.popup_centered()
 
 func _exit_tree() -> void:
+	_unregister_command_palette()
 	_stop_bridge_server()
 	_unmount_dock()
 
@@ -122,3 +124,46 @@ func _stop_bridge_server() -> void:
 
 func _on_settings_saved() -> void:
 	_start_bridge_server()
+
+
+func _register_command_palette() -> void:
+	if not Engine.is_editor_hint() or DisplayServer.get_name() == "headless":
+		return
+	var cp := EditorInterface.get_command_palette()
+	if not cp:
+		return
+	cp.add_command("LittleHelper: Focus Dock", "little_helper/focus_dock", Callable(self, "_cmd_focus_dock"))
+	cp.add_command("LittleHelper: Open Settings", "little_helper/open_settings", Callable(self, "_cmd_open_settings"))
+	cp.add_command("LittleHelper: Check for Updates", "little_helper/check_updates", Callable(self, "_cmd_check_updates"))
+
+
+func _unregister_command_palette() -> void:
+	if not Engine.is_editor_hint() or DisplayServer.get_name() == "headless":
+		return
+	var cp := EditorInterface.get_command_palette()
+	if not cp:
+		return
+	cp.remove_command("little_helper/focus_dock")
+	cp.remove_command("little_helper/open_settings")
+	cp.remove_command("little_helper/check_updates")
+
+
+func _cmd_focus_dock() -> void:
+	if is_instance_valid(dock_instance):
+		var prompt: LineEdit = dock_instance.get_node_or_null("%PromptInput")
+		if prompt:
+			prompt.grab_focus()
+
+
+func _cmd_open_settings() -> void:
+	if is_instance_valid(dock_instance) and dock_instance.has_method("_open_settings"):
+		dock_instance._open_settings()
+
+
+func _cmd_check_updates() -> void:
+	if is_instance_valid(dock_instance):
+		if dock_instance.has_method("_open_settings"):
+			dock_instance._open_settings()
+		if dock_instance.has_method("_on_check_updates_pressed"):
+			dock_instance._on_check_updates_pressed()
+
