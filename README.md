@@ -51,6 +51,21 @@
 4. Enable the **LittleHelper** plugin.
 5. The LittleHelper dock will appear in your editor docks (usually beside the Inspector or FileSystem).
 
+### 2. Updating LittleHelper
+
+Your API keys and chat history are stored in `user://` (outside the project directory), so they are never lost during updates.
+
+- **Option A: In-Engine 1-Click Update (Recommended)**
+  1. Click the **Settings** gear icon in the LittleHelper dock.
+  2. Under **Plugin Updates**, click **Check for Updates**.
+  3. When an update is detected, click **Download & Install Update**, then reload your project or restart Godot.
+
+- **Option B: Manual ZIP Update**
+  1. In Godot, go to **Project → Project Settings → Plugins** and disable **LittleHelper**.
+  2. Delete the existing `addons/LittleHelper/` folder (or legacy `addons/little_helper/` if upgrading from < v1.2.0).
+  3. Extract the new `LittleHelper.zip` into your `addons/` directory.
+  4. Re-enable **LittleHelper** in Project Settings.
+
 ---
 
 ## 🛠️ Operating Modes
