@@ -1,7 +1,7 @@
 # 🤖 LittleHelper for Godot 4
 
 <p align="center">
-  <img src="addons/little_helper/icon.svg" width="96" height="96" alt="LittleHelper Icon" />
+  <img src="addons/LittleHelper/icon.svg" width="96" height="96" alt="LittleHelper Icon" />
   <br>
   <strong>In-Engine AI Copilot & Model Context Protocol (MCP) Bridge for Godot 4</strong>
   <br><br>
@@ -46,7 +46,7 @@
 ### 1. Installation
 
 1. Download `little_helper.zip` from the [GitHub Releases](https://github.com/bbs220/little-helper/releases) page (or clone the repository).
-2. Extract the `addons/little_helper` folder into your Godot project's `addons/` directory.
+2. Extract the `addons/LittleHelper` folder into your Godot project's `addons/` directory.
 3. In the Godot editor, open **Project → Project Settings → Plugins**.
 4. Enable the **LittleHelper** plugin.
 5. The LittleHelper dock will appear in your editor docks (usually beside the Inspector or FileSystem).
@@ -80,7 +80,7 @@ Add the following to your agent's MCP configuration (`mcp_config.json` or `claud
   "mcpServers": {
     "godot-little-helper": {
       "command": "node",
-      "args": ["addons/little_helper/bridge/mcp_bridge.js"],
+      "args": ["addons/LittleHelper/bridge/mcp_bridge.js"],
       "env": {
         "GODOT_PORT": "9099"
       }
@@ -180,7 +180,7 @@ When connected via MCP, external agents have access to 24 real-time tools:
 ## 📁 Directory Structure
 
 ```text
-addons/little_helper/
+addons/LittleHelper/
 ├── plugin.cfg                  # Plugin metadata & editor registration
 ├── little_helper.gd            # Plugin lifecycle entry script
 ├── icon.svg                    # Mascot avatar & editor icon

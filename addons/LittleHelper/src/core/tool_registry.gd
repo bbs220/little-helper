@@ -5,10 +5,10 @@ extends RefCounted
 ## Central tool registry and dispatcher for LittleHelper.
 ## Aggregates modular category toolsets from src/tools/.
 
-const SceneTools   = preload("res://addons/little_helper/src/tools/scene_tools.gd")
-const NodeTools    = preload("res://addons/little_helper/src/tools/node_tools.gd")
-const ProjectTools = preload("res://addons/little_helper/src/tools/project_tools.gd")
-const CodeTools    = preload("res://addons/little_helper/src/tools/code_tools.gd")
+const SceneTools   = preload("res://addons/LittleHelper/src/tools/scene_tools.gd")
+const NodeTools    = preload("res://addons/LittleHelper/src/tools/node_tools.gd")
+const ProjectTools = preload("res://addons/LittleHelper/src/tools/project_tools.gd")
+const CodeTools    = preload("res://addons/LittleHelper/src/tools/code_tools.gd")
 
 const MODULES = [
 	SceneTools,

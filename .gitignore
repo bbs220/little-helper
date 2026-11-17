@@ -10,7 +10,7 @@ desktop.ini
 
 # Local testing configs & secrets
 *.cfg
-!addons/little_helper/plugin.cfg
+!addons/LittleHelper/plugin.cfg
 
 # Release Archives
 *.zip

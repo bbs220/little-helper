@@ -1,5 +1,5 @@
 @tool
-@icon('res://addons/little_helper/icon.svg')
+@icon('res://addons/LittleHelper/icon.svg')
 extends MarginContainer
 
 @onready var status_box: HBoxContainer = $VBoxContainer/HeaderBox/StatusBox
@@ -40,7 +40,7 @@ signal settings_saved
 @onready var save_status_label: Label = $SettingsOverlay/SettingsPanel/SettingsLayout/SettingsFooter/SaveStatusLabel
 @onready var save_settings_button: Button = $SettingsOverlay/SettingsPanel/SettingsLayout/SettingsFooter/SaveSettingsButton
 
-const ICONS_DIR := "res://addons/little_helper/icons/"
+const ICONS_DIR := "res://addons/LittleHelper/icons/"
 const TRASH_SVG := ICONS_DIR + "trash.svg"
 const SEND_SVG := ICONS_DIR + "send.svg"
 const PLUS_SVG := ICONS_DIR + "plus.svg"
@@ -59,8 +59,8 @@ const BOLT_SVG := ICONS_DIR + "bolt.svg"
 const COPY_SVG := ICONS_DIR + "copy.svg"
 const SETTINGS_FILE_PATH := "user://little_helper_settings.cfg"
 const INITIAL_GREETING := "Hi! Ask me anything, use [color=#66ccff][b]@[/b][/color] to attach editor context (@script, @node, @tree), or [color=#eebb44][b]/[/b][/color] for actions.\nClick [b]+[/b] to attach files or resources."
-const LLMClient = preload("res://addons/little_helper/src/agent/llm_client.gd")
-const Utils = preload("res://addons/little_helper/src/tools/tool_utils.gd")
+const LLMClient = preload("res://addons/LittleHelper/src/agent/llm_client.gd")
+const Utils = preload("res://addons/LittleHelper/src/tools/tool_utils.gd")
 
 const CONTEXT_MENTIONS: Array[Dictionary] = [
 	{
@@ -444,7 +444,7 @@ func _update_mcp_snippet() -> void:
 	var port_str := mcp_port_input.text.strip_edges() if is_instance_valid(mcp_port_input) else "9099"
 	if port_str.is_empty():
 		port_str = "9099"
-	var script_path := ProjectSettings.globalize_path("res://addons/little_helper/bridge/mcp_bridge.js").replace("\\", "/")
+	var script_path := ProjectSettings.globalize_path("res://addons/LittleHelper/bridge/mcp_bridge.js").replace("\\", "/")
 	var snippet := {
 		"mcpServers": {
 			"godot-little-helper": {
@@ -1240,8 +1240,8 @@ func _on_clear_pressed() -> void:
 func _append_message(sender: String, message: String) -> void:
 	var color := "#66ccff" if sender == "LittleHelper" else "#aaddaa"
 	var avatar := ""
-	if sender == "LittleHelper" and ResourceLoader.exists("res://addons/little_helper/icon.svg"):
-		avatar = "[img=18x18]res://addons/little_helper/icon.svg[/img] "
+	if sender == "LittleHelper" and ResourceLoader.exists("res://addons/LittleHelper/icon.svg"):
+		avatar = "[img=18x18]res://addons/LittleHelper/icon.svg[/img] "
 	
 	var formatted_message := message
 	if sender == "You":

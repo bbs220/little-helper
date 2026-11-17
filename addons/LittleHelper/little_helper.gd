@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-const DOCK_SCENE_PATH := "res://addons/little_helper/src/ui/little_helper_dock.tscn"
+const DOCK_SCENE_PATH := "res://addons/LittleHelper/src/ui/little_helper_dock.tscn"
 
 var dock_instance: Control = null
 var bridge_server_instance: LittleHelperBridgeServer = null

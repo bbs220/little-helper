@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dsp30xxbrea5d"]
 
-[ext_resource type="Script" uid="uid://djgtpybxrvrgq" path="res://addons/little_helper/src/ui/little_helper_dock.gd" id="1_dnknk"]
+[ext_resource type="Script" uid="uid://djgtpybxrvrgq" path="res://addons/LittleHelper/src/ui/little_helper_dock.gd" id="1_dnknk"]
 
 [sub_resource type="Image" id="Image_dnknk"]
 data = {
@@ -386,10 +386,10 @@ theme_override_styles/read_only = SubResource("StyleBoxFlat_537yw")
 text = "{
   \"mcpServers\": {
     \"godot-little-helper\": {
-      \"args\": [
-        \"D:/personal/dev_stuff/game_dev/_projects/test_template_godot/addons/little_helper/mcp_bridge.js\"
-      ],
       \"command\": \"node\",
+      \"args\": [
+        \"addons/LittleHelper/bridge/mcp_bridge.js\"
+      ],
       \"env\": {
         \"GODOT_PORT\": \"9099\"
       }

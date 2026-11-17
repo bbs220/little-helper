@@ -4,7 +4,7 @@ extends RefCounted
 
 ## ClassDB query, GDScript reading, and in-editor dynamic execution tools.
 
-const Utils = preload("res://addons/little_helper/src/tools/tool_utils.gd")
+const Utils = preload("res://addons/LittleHelper/src/tools/tool_utils.gd")
 
 static func get_tools() -> Array[Dictionary]:
 	return [
