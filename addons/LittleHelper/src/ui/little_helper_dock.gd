@@ -194,6 +194,17 @@ var _file_dialog: FileDialog = null
 var custom_instructions_edit: TextEdit = null
 var _code_blocks: Array[String] = []
 
+# Plugin Updater components
+var _update_http_req: HTTPRequest = null
+var _download_http_req: HTTPRequest = null
+var _update_version_label: Label = null
+var _check_update_btn: Button = null
+var _update_status_label: Label = null
+var _update_action_btn: Button = null
+var _update_progress: ProgressBar = null
+var _pending_update_url: String = ""
+var _pending_update_tag: String = ""
+
 func _ready() -> void:
 	status_icon.custom_minimum_size = Vector2(16, 16)
 	status_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -252,6 +263,7 @@ func _ready() -> void:
 	_apply_panel_style()
 	_setup_provider_options()
 	_setup_custom_instructions_ui()
+	_setup_updates_ui()
 	_setup_attach_popup()
 	_load_settings()
 	
@@ -1457,15 +1469,286 @@ func _setup_custom_instructions_ui() -> void:
 		return
 	var label := Label.new()
 	label.text = "Custom Instructions / Project Persona:"
-	label.add_theme_font_size_override("font_size", 12)
 	direct_ai_section.add_child(label)
 	
 	custom_instructions_edit = TextEdit.new()
-	custom_instructions_edit.custom_minimum_size = Vector2(0, 60)
+	custom_instructions_edit.custom_minimum_size = Vector2(0, 68)
 	custom_instructions_edit.placeholder_text = "e.g. 2D platformer, use static typing (-> void), prefer composition, Godot 4 conventions..."
 	custom_instructions_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	custom_instructions_edit.add_theme_font_size_override("font_size", 11)
 	direct_ai_section.add_child(custom_instructions_edit)
+
+
+func _setup_updates_ui() -> void:
+	var form_layout: VBoxContainer = $SettingsOverlay/SettingsPanel/SettingsLayout/SettingsScroll/FormLayout
+	if not is_instance_valid(form_layout):
+		return
+	
+	var sep := HSeparator.new()
+	form_layout.add_child(sep)
+	
+	var update_section := VBoxContainer.new()
+	update_section.name = "UpdateSection"
+	update_section.add_theme_constant_override("separation", 6)
+	form_layout.add_child(update_section)
+	
+	var title_lbl := Label.new()
+	title_lbl.text = "Plugin Updates:"
+	update_section.add_child(title_lbl)
+	
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	update_section.add_child(row)
+	
+	_update_version_label = Label.new()
+	_update_version_label.text = "Current: v%s" % _get_current_plugin_version()
+	_update_version_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_update_version_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	row.add_child(_update_version_label)
+	
+	_check_update_btn = Button.new()
+	_check_update_btn.text = "Check for Updates"
+	_check_update_btn.tooltip_text = "Check GitHub for newer releases of LittleHelper"
+	var check_icon := _get_svg_icon(CIRCLE_ARROW_SVG, 14)
+	if check_icon:
+		_check_update_btn.icon = check_icon
+	_check_update_btn.pressed.connect(_on_check_updates_pressed)
+	row.add_child(_check_update_btn)
+	
+	_update_status_label = Label.new()
+	_update_status_label.text = ""
+	_update_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	update_section.add_child(_update_status_label)
+	
+	_update_progress = ProgressBar.new()
+	_update_progress.custom_minimum_size = Vector2(0, 14)
+	_update_progress.visible = false
+	_update_progress.show_percentage = false
+	update_section.add_child(_update_progress)
+	
+	_update_action_btn = Button.new()
+	_update_action_btn.text = "Download & Install Update"
+	_update_action_btn.visible = false
+	_update_action_btn.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55))
+	_update_action_btn.pressed.connect(_on_install_update_pressed)
+	update_section.add_child(_update_action_btn)
+	
+	_update_http_req = HTTPRequest.new()
+	_update_http_req.name = "UpdateCheckHTTP"
+	add_child(_update_http_req)
+	_update_http_req.request_completed.connect(_on_release_check_completed)
+	
+	_download_http_req = HTTPRequest.new()
+	_download_http_req.name = "UpdateDownloadHTTP"
+	add_child(_download_http_req)
+	_download_http_req.request_completed.connect(_on_download_completed)
+
+
+func _get_current_plugin_version() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load("res://addons/LittleHelper/plugin.cfg") == OK:
+		return str(cfg.get_value("plugin", "version", "1.2.0"))
+	return "1.2.0"
+
+
+func _parse_semver(ver: String) -> Array[int]:
+	var clean := ver.strip_edges().trim_prefix("v")
+	var parts := clean.split(".")
+	var res: Array[int] = [0, 0, 0]
+	for i in range(mini(parts.size(), 3)):
+		res[i] = parts[i].to_int()
+	return res
+
+
+func _is_remote_version_greater(remote: String, local: String) -> bool:
+	var r := _parse_semver(remote)
+	var l := _parse_semver(local)
+	for i in range(3):
+		if r[i] > l[i]:
+			return true
+		elif r[i] < l[i]:
+			return false
+	return false
+
+
+func _on_check_updates_pressed() -> void:
+	if not is_instance_valid(_update_http_req):
+		return
+	_update_status_label.text = "Checking GitHub releases..."
+	_update_status_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	_check_update_btn.disabled = true
+	_update_action_btn.visible = false
+	
+	var headers := PackedStringArray([
+		"User-Agent: Godot-LittleHelper-Updater",
+		"Accept: application/vnd.github.v3+json"
+	])
+	var err := _update_http_req.request("https://api.github.com/repos/bbs220/little-helper/releases/latest", headers)
+	if err != OK:
+		_update_status_label.text = "Failed to start update check (error %d)" % err
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_check_update_btn.disabled = false
+
+
+func _on_release_check_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if not is_instance_valid(_check_update_btn) or not is_instance_valid(_update_status_label):
+		return
+	_check_update_btn.disabled = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_update_status_label.text = "Network connection failed"
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		return
+	
+	if response_code == 404:
+		_update_status_label.text = "No published releases found on GitHub."
+		_update_status_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		return
+	elif response_code == 403:
+		_update_status_label.text = "GitHub API rate limit reached. Please try again later."
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.2))
+		return
+	elif response_code != 200:
+		_update_status_label.text = "GitHub returned HTTP %d" % response_code
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		return
+	
+	var json := JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK or not json.data is Dictionary:
+		_update_status_label.text = "Failed to parse release metadata"
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		return
+	
+	var release_data: Dictionary = json.data
+	var remote_tag: String = str(release_data.get("tag_name", ""))
+	var current_ver: String = _get_current_plugin_version()
+	
+	if _is_remote_version_greater(remote_tag, current_ver):
+		_update_status_label.text = "Update available: %s!" % remote_tag
+		_update_status_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55))
+		
+		var download_url := ""
+		var assets: Array = release_data.get("assets", [])
+		for a in assets:
+			if a is Dictionary and str(a.get("name", "")).to_lower().ends_with(".zip"):
+				download_url = str(a.get("browser_download_url", ""))
+				break
+		if download_url.is_empty():
+			download_url = str(release_data.get("zipball_url", ""))
+		
+		_pending_update_url = download_url
+		_pending_update_tag = remote_tag
+		_update_action_btn.text = "Download & Install %s" % remote_tag
+		_update_action_btn.visible = not download_url.is_empty()
+	else:
+		_update_status_label.text = "LittleHelper is up to date (v%s)" % current_ver
+		_update_status_label.add_theme_color_override("font_color", Color(0.65, 0.7, 0.75))
+		_update_action_btn.visible = false
+
+
+func _on_install_update_pressed() -> void:
+	if _pending_update_url.is_empty() or not is_instance_valid(_download_http_req):
+		return
+	
+	_update_action_btn.disabled = true
+	_check_update_btn.disabled = true
+	_update_status_label.text = "Downloading update from GitHub..."
+	_update_status_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+	_update_progress.visible = true
+	_update_progress.value = 0.0
+	
+	_download_http_req.download_file = "user://LittleHelper_update.zip"
+	var headers := PackedStringArray(["User-Agent: Godot-LittleHelper-Updater"])
+	var err := _download_http_req.request(_pending_update_url, headers)
+	if err != OK:
+		_update_status_label.text = "Failed to start download (error %d)" % err
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_update_action_btn.disabled = false
+		_check_update_btn.disabled = false
+		_update_progress.visible = false
+
+
+func _on_download_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	_update_progress.visible = false
+	if result != HTTPRequest.RESULT_SUCCESS or (response_code != 200 and response_code != 302):
+		_update_status_label.text = "Download failed (HTTP %d)" % response_code
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_update_action_btn.disabled = false
+		_check_update_btn.disabled = false
+		return
+	
+	var zip_path := "user://LittleHelper_update.zip"
+	if not FileAccess.file_exists(zip_path):
+		_update_status_label.text = "Downloaded file not found on disk"
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_update_action_btn.disabled = false
+		_check_update_btn.disabled = false
+		return
+	
+	_update_status_label.text = "Extracting files..."
+	
+	var reader := ZIPReader.new()
+	var open_err := reader.open(zip_path)
+	if open_err != OK:
+		_update_status_label.text = "Failed to open ZIP (error %d)" % open_err
+		_update_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+		_update_action_btn.disabled = false
+		_check_update_btn.disabled = false
+		return
+	
+	var files: PackedStringArray = reader.get_files()
+	var success_count := 0
+	for f in files:
+		var clean_rel := f
+		if clean_rel.begins_with("addons/LittleHelper/"):
+			clean_rel = clean_rel.substr("addons/LittleHelper/".length())
+		elif clean_rel.begins_with("addons/little_helper/"):
+			clean_rel = clean_rel.substr("addons/little_helper/".length())
+		elif clean_rel.begins_with("addons/"):
+			continue
+		
+		if clean_rel.is_empty():
+			continue
+		
+		var dest_path := "res://addons/LittleHelper/".path_join(clean_rel)
+		if f.ends_with("/"):
+			DirAccess.make_dir_recursive_absolute(dest_path)
+		else:
+			var dir := dest_path.get_base_dir()
+			if not DirAccess.dir_exists_absolute(dir):
+				DirAccess.make_dir_recursive_absolute(dir)
+			var buf := reader.read_file(f)
+			var fa := FileAccess.open(dest_path, FileAccess.WRITE)
+			if fa:
+				fa.store_buffer(buf)
+				fa.close()
+				success_count += 1
+	
+	reader.close()
+	DirAccess.remove_absolute(zip_path)
+	
+	_update_status_label.text = "Updated to %s! (%d files updated)" % [_pending_update_tag, success_count]
+	_update_status_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.55))
+	_update_action_btn.visible = false
+	_check_update_btn.disabled = false
+	_update_version_label.text = "Current: %s" % _pending_update_tag
+	
+	if Engine.is_editor_hint():
+		var fs = EditorInterface.get_resource_filesystem()
+		if fs:
+			fs.scan()
+	
+	_show_restart_dialog(_pending_update_tag)
+
+
+func _show_restart_dialog(new_version: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var dialog := AcceptDialog.new()
+	dialog.title = "LittleHelper Updated"
+	dialog.dialog_text = "LittleHelper has been updated to %s!\n\nPlease reload your project (Project -> Reload Current Project) or restart Godot to finish applying the update." % new_version
+	dialog.confirmed.connect(func(): dialog.queue_free())
+	dialog.canceled.connect(func(): dialog.queue_free())
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 func _restore_chat_history() -> void:

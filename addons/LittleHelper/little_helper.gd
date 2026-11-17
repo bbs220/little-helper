@@ -15,10 +15,33 @@ func _disable_plugin() -> void:
 	_unmount_dock()
 
 func _enter_tree() -> void:
+	_check_legacy_folder()
 	if is_instance_valid(dock_instance):
 		_unmount_dock()
 	_mount_dock()
 	_start_bridge_server()
+
+func _check_legacy_folder() -> void:
+	if DirAccess.dir_exists_absolute("res://addons/little_helper"):
+		push_warning("[LittleHelper] Legacy folder 'res://addons/little_helper' detected alongside 'res://addons/LittleHelper'. Please delete the old folder from the FileSystem dock to prevent duplicate class conflicts.")
+		print_rich("[color=#ff6666][b][LittleHelper WARNING][/b][/color] Legacy folder [b]'res://addons/little_helper'[/b] detected alongside [b]'res://addons/LittleHelper'[/b]. Please delete the old folder to prevent duplicate class errors.")
+		if DisplayServer.get_name() != "headless" and Engine.is_editor_hint():
+			call_deferred("_show_legacy_folder_dialog")
+
+func _show_legacy_folder_dialog() -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "LittleHelper: Legacy Folder Warning"
+	dialog.dialog_text = "Legacy folder 'res://addons/little_helper' was detected alongside 'res://addons/LittleHelper'.\n\nTo prevent duplicate class definitions and broken references, please delete the old 'addons/little_helper' folder from your FileSystem dock."
+	dialog.confirmed.connect(func(): dialog.queue_free())
+	dialog.canceled.connect(func(): dialog.queue_free())
+	var base_control: Control = null
+	if has_method("get_editor_interface"):
+		var editor_if = get_editor_interface()
+		if editor_if and editor_if.has_method("get_base_control"):
+			base_control = editor_if.get_base_control()
+	if base_control:
+		base_control.add_child(dialog)
+		dialog.popup_centered()
 
 func _exit_tree() -> void:
 	_stop_bridge_server()
